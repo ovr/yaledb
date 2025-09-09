@@ -1,0 +1,18 @@
+[package]
+name = "rocksdb-fileformat"
+edition = "2024"
+authors = ["ovr"]
+description = "RocksDB SST file format reader"
+
+[dependencies]
+byteorder = "1.5"
+thiserror = "1.0"
+bytes = "1.5"
+lz4 = "1.24"
+zstd = "0.13"
+flate2 = "1.0"
+snap = "1.1"
+
+[dev-dependencies]
+tempfile = "3.8"
+hex = "0.4"
