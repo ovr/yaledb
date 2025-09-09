@@ -36,9 +36,9 @@ impl TryFrom<u8> for CompressionType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatVersion {
-    V2 = 2,
-    V3 = 3,
-    V4 = 4,
+    V5 = 5,
+    V6 = 6,
+    V7 = 7,
 }
 
 impl TryFrom<u32> for FormatVersion {
@@ -46,9 +46,9 @@ impl TryFrom<u32> for FormatVersion {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
-            2 => Ok(FormatVersion::V2),
-            3 => Ok(FormatVersion::V3),
-            4 => Ok(FormatVersion::V4),
+            5 => Ok(FormatVersion::V5),
+            6 => Ok(FormatVersion::V6),
+            7 => Ok(FormatVersion::V7),
             _ => Err(crate::error::Error::UnsupportedFormatVersion(value)),
         }
     }
