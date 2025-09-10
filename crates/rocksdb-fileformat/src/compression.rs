@@ -13,6 +13,54 @@ pub fn decompress(data: &[u8], compression_type: CompressionType) -> Result<Vec<
     }
 }
 
+/// Compress data according to the specified compression type
+pub fn compress(data: &[u8], compression_type: CompressionType) -> Result<Vec<u8>> {
+    match compression_type {
+        CompressionType::None => Ok(data.to_vec()),
+        CompressionType::Snappy => compress_snappy(data),
+        CompressionType::Zlib => compress_zlib(data),
+        CompressionType::LZ4 => compress_lz4(data),
+        CompressionType::ZSTD => compress_zstd(data),
+        _ => Err(Error::UnsupportedCompressionType(compression_type as u8)),
+    }
+}
+
+fn compress_snappy(data: &[u8]) -> Result<Vec<u8>> {
+    snap::raw::Encoder::new()
+        .compress_vec(data)
+        .map_err(|e| Error::Decompression(format!("Snappy compression failed: {}", e)))
+}
+
+fn compress_zlib(data: &[u8]) -> Result<Vec<u8>> {
+    use flate2::Compression;
+    use flate2::write::ZlibEncoder;
+    use std::io::Write;
+
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder
+        .write_all(data)
+        .map_err(|e| Error::Decompression(format!("Zlib compression failed: {}", e)))?;
+    encoder
+        .finish()
+        .map_err(|e| Error::Decompression(format!("Zlib compression failed: {}", e)))
+}
+
+fn compress_lz4(data: &[u8]) -> Result<Vec<u8>> {
+    // LZ4 in RocksDB includes a 4-byte uncompressed size header
+    let compressed_block = lz4::block::compress(data, None, false)
+        .map_err(|e| Error::Decompression(format!("LZ4 compression failed: {}", e)))?;
+
+    let mut result = Vec::new();
+    result.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    result.extend_from_slice(&compressed_block);
+    Ok(result)
+}
+
+fn compress_zstd(data: &[u8]) -> Result<Vec<u8>> {
+    zstd::stream::encode_all(data, 0)
+        .map_err(|e| Error::Decompression(format!("ZSTD compression failed: {}", e)))
+}
+
 fn decompress_snappy(data: &[u8]) -> Result<Vec<u8>> {
     snap::raw::Decoder::new()
         .decompress_vec(data)
@@ -112,5 +160,49 @@ mod tests {
         let data = b"hello world";
         let result = decompress(data, CompressionType::BZip2);
         assert!(matches!(result, Err(Error::UnsupportedCompressionType(_))));
+    }
+
+    #[test]
+    fn test_round_trip_no_compression() {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::None).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::None).unwrap();
+        assert_eq!(decompressed, original);
+    }
+
+    #[test]
+    fn test_round_trip_snappy() {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::Snappy).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::Snappy).unwrap();
+        assert_eq!(decompressed, original);
+        assert!(compressed.len() < original.len());
+    }
+
+    #[test]
+    fn test_round_trip_zlib() {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::Zlib).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::Zlib).unwrap();
+        assert_eq!(decompressed, original);
+        assert!(compressed.len() < original.len());
+    }
+
+    #[test]
+    fn test_round_trip_lz4() {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::LZ4).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::LZ4).unwrap();
+        assert_eq!(decompressed, original);
+        assert!(compressed.len() < original.len());
+    }
+
+    #[test]
+    fn test_round_trip_zstd() {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::ZSTD).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::ZSTD).unwrap();
+        assert_eq!(decompressed, original);
+        assert!(compressed.len() < original.len());
     }
 }
