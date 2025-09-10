@@ -85,32 +85,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_varint64_encoding() {
+    fn test_varint64_encoding() -> Result<()> {
         let test_cases = vec![0, 127, 128, 16383, 16384, 2097151, 2097152];
 
         for value in test_cases {
             let mut buf = Vec::new();
-            write_varint64(&mut buf, value).unwrap();
+            write_varint64(&mut buf, value)?;
             let mut cursor = Cursor::new(&buf);
-            let decoded = read_varint64(&mut cursor).unwrap();
+            let decoded = read_varint64(&mut cursor)?;
             assert_eq!(value, decoded);
         }
+        Ok(())
     }
 
     #[test]
-    fn test_block_handle_encoding() {
+    fn test_block_handle_encoding() -> Result<()> {
         let handle = BlockHandle::new(12345, 67890);
-        let encoded = handle.encode_to_bytes().unwrap();
-        let (decoded, consumed) = BlockHandle::decode_from_bytes(&encoded).unwrap();
+        let encoded = handle.encode_to_bytes()?;
+        let (decoded, consumed) = BlockHandle::decode_from_bytes(&encoded)?;
 
         assert_eq!(handle, decoded);
         assert_eq!(consumed, encoded.len());
+        Ok(())
     }
 
     #[test]
-    fn test_block_handle_encoded_length() {
+    fn test_block_handle_encoded_length() -> Result<()> {
         let handle = BlockHandle::new(12345, 67890);
-        let encoded = handle.encode_to_bytes().unwrap();
+        let encoded = handle.encode_to_bytes()?;
         assert_eq!(handle.encoded_length(), encoded.len());
+        Ok(())
     }
 }

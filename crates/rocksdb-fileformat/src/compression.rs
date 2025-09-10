@@ -103,106 +103,125 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_no_compression() {
+    fn test_no_compression() -> Result<()> {
         let data = b"hello world";
-        let result = decompress(data, CompressionType::None).unwrap();
+        let result = decompress(data, CompressionType::None)?;
         assert_eq!(result, data);
+        Ok(())
     }
 
     #[test]
-    fn test_snappy_compression() {
+    fn test_snappy_compression() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = snap::raw::Encoder::new().compress_vec(original).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::Snappy).unwrap();
+        let compressed = snap::raw::Encoder::new()
+            .compress_vec(original)
+            .map_err(|e| Error::Decompression(format!("Snappy compression failed: {}", e)))?;
+        let decompressed = decompress(&compressed, CompressionType::Snappy)?;
         assert_eq!(decompressed, original);
+        Ok(())
     }
 
     #[test]
-    fn test_zlib_compression() {
+    fn test_zlib_compression() -> Result<()> {
         use flate2::Compression;
         use flate2::write::ZlibEncoder;
         use std::io::Write;
 
         let original = b"hello world hello world hello world";
         let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(original).unwrap();
-        let compressed = encoder.finish().unwrap();
+        encoder
+            .write_all(original)
+            .map_err(|e| Error::Decompression(format!("Zlib write failed: {}", e)))?;
+        let compressed = encoder
+            .finish()
+            .map_err(|e| Error::Decompression(format!("Zlib finish failed: {}", e)))?;
 
-        let decompressed = decompress(&compressed, CompressionType::Zlib).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::Zlib)?;
         assert_eq!(decompressed, original);
+        Ok(())
     }
 
     #[test]
-    fn test_lz4_compression() {
+    fn test_lz4_compression() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed_block = lz4::block::compress(original, None, false).unwrap();
+        let compressed_block = lz4::block::compress(original, None, false)
+            .map_err(|e| Error::Decompression(format!("LZ4 compression failed: {}", e)))?;
 
         // Create LZ4 data with uncompressed size header (as RocksDB does)
         let mut lz4_data = Vec::new();
         lz4_data.extend_from_slice(&(original.len() as u32).to_le_bytes());
         lz4_data.extend_from_slice(&compressed_block);
 
-        let decompressed = decompress(&lz4_data, CompressionType::LZ4).unwrap();
+        let decompressed = decompress(&lz4_data, CompressionType::LZ4)?;
         assert_eq!(decompressed, original);
+        Ok(())
     }
 
     #[test]
-    fn test_zstd_compression() {
+    fn test_zstd_compression() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = zstd::stream::encode_all(&original[..], 0).unwrap();
+        let compressed = zstd::stream::encode_all(&original[..], 0)
+            .map_err(|e| Error::Decompression(format!("ZSTD compression failed: {}", e)))?;
 
-        let decompressed = decompress(&compressed, CompressionType::ZSTD).unwrap();
+        let decompressed = decompress(&compressed, CompressionType::ZSTD)?;
         assert_eq!(decompressed, original);
+        Ok(())
     }
 
     #[test]
-    fn test_unsupported_compression() {
+    fn test_unsupported_compression() -> Result<()> {
         let data = b"hello world";
         let result = decompress(data, CompressionType::BZip2);
         assert!(matches!(result, Err(Error::UnsupportedCompressionType(_))));
+        Ok(())
     }
 
     #[test]
-    fn test_round_trip_no_compression() {
+    fn test_round_trip_no_compression() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = compress(original, CompressionType::None).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::None).unwrap();
+        let compressed = compress(original, CompressionType::None)?;
+        let decompressed = decompress(&compressed, CompressionType::None)?;
         assert_eq!(decompressed, original);
+        Ok(())
     }
 
     #[test]
-    fn test_round_trip_snappy() {
+    fn test_round_trip_snappy() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = compress(original, CompressionType::Snappy).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::Snappy).unwrap();
-        assert_eq!(decompressed, original);
-        assert!(compressed.len() < original.len());
-    }
-
-    #[test]
-    fn test_round_trip_zlib() {
-        let original = b"hello world hello world hello world";
-        let compressed = compress(original, CompressionType::Zlib).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::Zlib).unwrap();
+        let compressed = compress(original, CompressionType::Snappy)?;
+        let decompressed = decompress(&compressed, CompressionType::Snappy)?;
         assert_eq!(decompressed, original);
         assert!(compressed.len() < original.len());
+        Ok(())
     }
 
     #[test]
-    fn test_round_trip_lz4() {
+    fn test_round_trip_zlib() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = compress(original, CompressionType::LZ4).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::LZ4).unwrap();
+        let compressed = compress(original, CompressionType::Zlib)?;
+        let decompressed = decompress(&compressed, CompressionType::Zlib)?;
         assert_eq!(decompressed, original);
         assert!(compressed.len() < original.len());
+        Ok(())
     }
 
     #[test]
-    fn test_round_trip_zstd() {
+    fn test_round_trip_lz4() -> Result<()> {
         let original = b"hello world hello world hello world";
-        let compressed = compress(original, CompressionType::ZSTD).unwrap();
-        let decompressed = decompress(&compressed, CompressionType::ZSTD).unwrap();
+        let compressed = compress(original, CompressionType::LZ4)?;
+        let decompressed = decompress(&compressed, CompressionType::LZ4)?;
         assert_eq!(decompressed, original);
         assert!(compressed.len() < original.len());
+        Ok(())
+    }
+
+    #[test]
+    fn test_round_trip_zstd() -> Result<()> {
+        let original = b"hello world hello world hello world";
+        let compressed = compress(original, CompressionType::ZSTD)?;
+        let decompressed = decompress(&compressed, CompressionType::ZSTD)?;
+        assert_eq!(decompressed, original);
+        assert!(compressed.len() < original.len());
+        Ok(())
     }
 }

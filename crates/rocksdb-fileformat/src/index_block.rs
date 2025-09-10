@@ -263,10 +263,11 @@ impl IndexBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Result;
     use crate::types::CompressionType;
 
     #[test]
-    fn test_index_block_creation() {
+    fn test_index_block_creation() -> Result<()> {
         let key1 = b"key001";
         let handle1 = BlockHandle {
             offset: 100,
@@ -290,17 +291,18 @@ mod tests {
         block_data.push(0); // compression type = None
         block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
 
-        let index_block = IndexBlock::new(&block_data, CompressionType::None).unwrap();
-        let entries = index_block.get_entries().unwrap();
+        let index_block = IndexBlock::new(&block_data, CompressionType::None)?;
+        let entries = index_block.get_entries()?;
 
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].key, key1);
         assert_eq!(entries[0].block_handle.offset, handle1.offset);
         assert_eq!(entries[0].block_handle.size, handle1.size);
+        Ok(())
     }
 
     #[test]
-    fn test_find_block_for_key() {
+    fn test_find_block_for_key() -> Result<()> {
         let key1 = b"key001";
         let key2 = b"key002";
         let handle1 = BlockHandle {
@@ -338,19 +340,20 @@ mod tests {
         block_data.push(0); // compression type = None
         block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
 
-        let index_block = IndexBlock::new(&block_data, CompressionType::None).unwrap();
+        let index_block = IndexBlock::new(&block_data, CompressionType::None)?;
 
-        let result = index_block.find_block_for_key(b"key000").unwrap();
+        let result = index_block.find_block_for_key(b"key000")?;
         assert!(result.is_some());
         assert_eq!(result.unwrap().offset, handle1.offset);
 
-        let result = index_block.find_block_for_key(b"key001").unwrap();
+        let result = index_block.find_block_for_key(b"key001")?;
         assert!(result.is_some());
         assert_eq!(result.unwrap().offset, handle1.offset);
 
-        let result = index_block.find_block_for_key(b"key002").unwrap();
+        let result = index_block.find_block_for_key(b"key002")?;
         assert!(result.is_some());
         assert_eq!(result.unwrap().offset, handle2.offset);
+        Ok(())
     }
 
     fn encode_varint(mut value: u32) -> Vec<u8> {

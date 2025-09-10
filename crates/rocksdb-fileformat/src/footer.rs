@@ -131,67 +131,71 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_footer_roundtrip() {
+    fn test_footer_roundtrip() -> Result<()> {
         let original = Footer {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 0,
         };
 
-        let encoded = original.encode_to_bytes().unwrap();
+        let encoded = original.encode_to_bytes()?;
         assert_eq!(encoded.len(), FOOTER_SIZE);
 
-        let decoded = Footer::decode_from_bytes(&encoded).unwrap();
+        let decoded = Footer::decode_from_bytes(&encoded)?;
         assert_eq!(decoded, original);
+        Ok(())
     }
 
     #[test]
-    fn test_footer_roundtrip_with_format_version() {
+    fn test_footer_roundtrip_with_format_version() -> Result<()> {
         let original = Footer {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 5,
         };
 
-        let encoded = original.encode_to_bytes().unwrap();
+        let encoded = original.encode_to_bytes()?;
         assert_eq!(encoded.len(), FOOTER_SIZE);
 
-        let decoded = Footer::decode_from_bytes(&encoded).unwrap();
+        let decoded = Footer::decode_from_bytes(&encoded)?;
         assert_eq!(original, decoded);
+        Ok(())
     }
 
     #[test]
-    fn test_footer_magic_number_validation() {
+    fn test_footer_magic_number_validation() -> Result<()> {
         let footer = Footer {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 0,
         };
 
-        let mut encoded = footer.encode_to_bytes().unwrap();
+        let mut encoded = footer.encode_to_bytes()?;
 
         encoded[FOOTER_SIZE - 1] = 0xFF;
 
         let result = Footer::decode_from_bytes(&encoded);
         assert!(matches!(result, Err(Error::InvalidMagicNumber(_))));
+        Ok(())
     }
 
     #[test]
-    fn test_footer_size_validation() {
+    fn test_footer_size_validation() -> Result<()> {
         let data = vec![0u8; 10]; // Wrong size
         let result = Footer::decode_from_bytes(&data);
         assert!(matches!(result, Err(Error::InvalidFooterSize(10))));
+        Ok(())
     }
 
     #[test]
-    fn test_footer_padding_validation() {
+    fn test_footer_padding_validation() -> Result<()> {
         let footer = Footer {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 0,
         };
 
-        let mut encoded = footer.encode_to_bytes().unwrap();
+        let mut encoded = footer.encode_to_bytes()?;
 
         let padding_start =
             footer.metaindex_handle.encoded_length() + footer.index_handle.encoded_length();
@@ -202,5 +206,6 @@ mod tests {
             let result = Footer::decode_from_bytes(&encoded);
             assert!(matches!(result, Err(Error::DataCorruption(_))));
         }
+        Ok(())
     }
 }

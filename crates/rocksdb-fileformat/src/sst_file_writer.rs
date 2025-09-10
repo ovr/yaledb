@@ -249,13 +249,23 @@ impl Drop for SstFileWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Error;
     use crate::sst_reader::SstReader;
     use crate::types::{CompressionType, FormatVersion};
     use tempfile::tempdir;
 
     #[test]
-    fn test_write_and_read_simple() {
-        let dir = tempdir().unwrap();
+    fn test_create_writer() -> Result<()> {
+        let opts = Options::default();
+        let writer = SstFileWriter::create(&opts);
+        assert_eq!(writer.file_size(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_write_and_read_simple() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
         let opts = Options {
@@ -268,55 +278,61 @@ mod tests {
         // Write data
         {
             let mut writer = SstFileWriter::create(&opts);
-            writer.open(&path).unwrap();
-            writer.put(b"key1", b"value1").unwrap();
-            writer.put(b"key2", b"value2").unwrap();
-            writer.put(b"key3", b"value3").unwrap();
-            writer.finish().unwrap();
+            writer.open(&path)?;
+            writer.put(b"key1", b"value1")?;
+            writer.put(b"key2", b"value2")?;
+            writer.put(b"key3", b"value3")?;
+            writer.finish()?;
         }
 
         // Read data back
-        let mut reader = SstReader::open(&path).unwrap();
-        let footer = reader.read_footer().unwrap();
+        let mut reader = SstReader::open(&path)?;
+        let footer = reader.read_footer()?;
         assert!(footer.index_handle.size > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_key_ordering_enforced() {
-        let dir = tempdir().unwrap();
+    fn test_key_ordering_enforced() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
         let opts = Options::default();
         let mut writer = SstFileWriter::create(&opts);
-        writer.open(&path).unwrap();
+        writer.open(&path)?;
 
-        writer.put(b"key2", b"value2").unwrap();
+        writer.put(b"key2", b"value2")?;
 
         // This should fail because key1 < key2
         let result = writer.put(b"key1", b"value1");
         assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_different_operations() {
-        let dir = tempdir().unwrap();
+    fn test_different_operations() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
         let opts = Options::default();
         let mut writer = SstFileWriter::create(&opts);
-        writer.open(&path).unwrap();
+        writer.open(&path)?;
 
-        writer.put(b"key1", b"value1").unwrap();
-        writer.delete(b"key2").unwrap();
-        writer.merge(b"key3", b"merge_value").unwrap();
-        writer.finish().unwrap();
+        writer.put(b"key1", b"value1")?;
+        writer.delete(b"key2")?;
+        writer.merge(b"key3", b"merge_value")?;
+        writer.finish()?;
 
         assert!(writer.file_size() > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_compression() {
-        let dir = tempdir().unwrap();
+    fn test_compression() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
         let opts = Options {
@@ -327,52 +343,57 @@ mod tests {
         };
 
         let mut writer = SstFileWriter::create(&opts);
-        writer.open(&path).unwrap();
+        writer.open(&path)?;
 
         // Add many similar keys to get good compression
         for i in 0..100 {
             let key = format!("key{:03}", i);
             let value = format!("value{:03}_some_long_repeated_data", i);
-            writer.put(key.as_bytes(), value.as_bytes()).unwrap();
+            writer.put(key.as_bytes(), value.as_bytes())?;
         }
 
-        writer.finish().unwrap();
+        writer.finish()?;
         assert!(writer.file_size() > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_empty_file() {
-        let dir = tempdir().unwrap();
+    fn test_empty_file() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("empty.sst");
 
         let opts = Options::default();
         let mut writer = SstFileWriter::create(&opts);
-        writer.open(&path).unwrap();
-        writer.finish().unwrap();
+        writer.open(&path)?;
+        writer.finish()?;
 
         // Should be able to create an empty SST file
         assert!(writer.file_size() > 0); // Will have at least footer
+        Ok(())
     }
 
     #[test]
-    fn test_file_not_open() {
+    fn test_file_not_open() -> Result<()> {
         let opts = Options::default();
         let mut writer = SstFileWriter::create(&opts);
 
         // Should fail when no file is open
         let result = writer.put(b"key1", b"value1");
         assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_already_finished() {
-        let dir = tempdir().unwrap();
+    fn test_already_finished() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
         let opts = Options::default();
         let mut writer = SstFileWriter::create(&opts);
-        writer.open(&path).unwrap();
-        writer.finish().unwrap();
+        writer.open(&path)?;
+        writer.finish()?;
 
         // Should fail after finish
         let result = writer.put(b"key1", b"value1");
@@ -381,5 +402,6 @@ mod tests {
         // Should fail to finish again
         let result = writer.finish();
         assert!(result.is_err());
+        Ok(())
     }
 }

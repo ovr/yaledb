@@ -246,18 +246,19 @@ mod tests {
     use crate::types::CompressionType;
 
     #[test]
-    fn test_data_block_builder_simple() {
+    fn test_data_block_builder_simple() -> Result<()> {
         let mut builder = DataBlockBuilder::new(16);
 
         builder.add(b"key1", b"value1");
         builder.add(b"key2", b"value2");
 
-        let block_data = builder.finish(CompressionType::None).unwrap();
+        let block_data = builder.finish(CompressionType::None)?;
         assert!(!block_data.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_data_block_builder_with_compression() {
+    fn test_data_block_builder_with_compression() -> Result<()> {
         let mut builder = DataBlockBuilder::new(16);
 
         // Add multiple entries to test compression
@@ -267,12 +268,13 @@ mod tests {
             builder.add(key.as_bytes(), value.as_bytes());
         }
 
-        let compressed_block = builder.finish(CompressionType::Snappy).unwrap();
+        let compressed_block = builder.finish(CompressionType::Snappy)?;
         assert!(!compressed_block.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_index_block_builder() {
+    fn test_index_block_builder() -> Result<()> {
         let mut builder = IndexBlockBuilder::new(16);
 
         let handle1 = BlockHandle {
@@ -287,23 +289,26 @@ mod tests {
         builder.add_index_entry(b"key1", &handle1);
         builder.add_index_entry(b"key2", &handle2);
 
-        let block_data = builder.finish(CompressionType::None).unwrap();
+        let block_data = builder.finish(CompressionType::None)?;
         assert!(!block_data.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_data_block_builder_empty() {
+    fn test_data_block_builder_empty() -> Result<()> {
         let builder = DataBlockBuilder::new(16);
         assert!(builder.empty());
+        Ok(())
     }
 
     #[test]
-    fn test_data_block_builder_reset() {
+    fn test_data_block_builder_reset() -> Result<()> {
         let mut builder = DataBlockBuilder::new(16);
         builder.add(b"key1", b"value1");
         assert!(!builder.empty());
 
         builder.reset();
         assert!(builder.empty());
+        Ok(())
     }
 }

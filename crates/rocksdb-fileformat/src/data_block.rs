@@ -238,10 +238,11 @@ impl DataBlockReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Error;
     use crate::types::CompressionType;
 
     #[test]
-    fn test_data_block_uncompressed() {
+    fn test_data_block_uncompressed() -> Result<()> {
         let key1 = b"key001";
         let value1 = b"value1";
         let key2 = b"key002";
@@ -271,18 +272,19 @@ mod tests {
         block_data.push(0); // compression type = None
         block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
 
-        let data_block = DataBlock::new(&block_data, CompressionType::None).unwrap();
-        let entries = data_block.get_entries().unwrap();
+        let data_block = DataBlock::new(&block_data, CompressionType::None)?;
+        let entries = data_block.get_entries()?;
 
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].key, key1);
         assert_eq!(entries[0].value, value1);
         assert_eq!(entries[1].key, key2);
         assert_eq!(entries[1].value, value2);
+        Ok(())
     }
 
     #[test]
-    fn test_data_block_reader() {
+    fn test_data_block_reader() -> Result<()> {
         let key1 = b"key001";
         let value1 = b"value1";
 
@@ -300,17 +302,20 @@ mod tests {
         block_data.push(0); // compression type = None
         block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
 
-        let mut reader = DataBlockReader::new(&block_data, CompressionType::None).unwrap();
+        let mut reader = DataBlockReader::new(&block_data, CompressionType::None)?;
 
         reader.seek_to_first();
         assert!(reader.valid());
 
-        let entry = reader.next().unwrap();
+        let entry = reader
+            .next()
+            .ok_or_else(|| Error::InvalidArgument("Expected entry".to_string()))?;
         assert_eq!(entry.key, key1);
         assert_eq!(entry.value, value1);
 
         assert!(!reader.valid());
         assert!(reader.next().is_none());
+        Ok(())
     }
 
     fn encode_varint(mut value: u32) -> Vec<u8> {
