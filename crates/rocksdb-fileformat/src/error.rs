@@ -17,6 +17,9 @@ pub enum Error {
     #[error("Unsupported compression type: {0}")]
     UnsupportedCompressionType(u8),
 
+    #[error("Unsupported checksum type: {0}")]
+    UnsupportedChecksumType(u8),
+
     #[error("Unsupported format version: {0}")]
     UnsupportedFormatVersion(u32),
 
@@ -49,6 +52,9 @@ pub enum Error {
 
     #[error("Invalid argument: {0}")]
     InvalidArgument(String),
+
+    #[error("Unsupported operation: {0}")]
+    UnsupportedOperation(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

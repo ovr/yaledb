@@ -2,7 +2,7 @@ use crate::block_builder::{DataBlockBuilder, IndexBlockBuilder};
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
-use crate::types::{CompressionType, Options};
+use crate::types::{ChecksumType, CompressionType, Options};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -114,6 +114,7 @@ impl SstFileWriter {
         };
 
         let footer = Footer {
+            checksum_type: ChecksumType::CRC32c,
             metaindex_handle,
             index_handle,
             format_version: self.options.format_version as u32,

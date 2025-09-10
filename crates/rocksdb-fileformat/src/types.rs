@@ -1,11 +1,34 @@
 pub const ROCKSDB_MAGIC_NUMBER: u64 = 0x88e241b785f4cff7;
+pub const LEGACY_MAGIC_NUMBER: u64 = 0xdb4775248b80fb57;
 
-pub const FOOTER_SIZE: usize = 48;
+pub const FOOTER_SIZE: usize = 49;
 
 pub const MAX_BLOCK_HANDLE_ENCODED_LENGTH: usize = 20;
 
 pub const DEFAULT_BLOCK_SIZE: usize = 4096;
 pub const DEFAULT_BLOCK_RESTART_INTERVAL: usize = 16;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChecksumType {
+    None = 0,
+    CRC32c = 1,
+    XXH64 = 2,
+    XXH3 = 3,
+}
+
+impl TryFrom<u8> for ChecksumType {
+    type Error = crate::error::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ChecksumType::None),
+            1 => Ok(ChecksumType::CRC32c),
+            2 => Ok(ChecksumType::XXH64),
+            3 => Ok(ChecksumType::XXH3),
+            _ => Err(crate::error::Error::UnsupportedChecksumType(value)),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionType {
