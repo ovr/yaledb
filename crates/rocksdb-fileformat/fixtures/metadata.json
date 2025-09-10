@@ -1,0 +1,193 @@
+{
+  "generated_at": "2025-09-10",
+  "generator": "generate_fixtures.cpp",
+  "rocksdb_version": "10.5.1",
+  "files": [
+    {
+      "path": "sst_files/v5/v5_crc32c_none.sst",
+      "format_version": 5,
+      "checksum_type": "CRC32C",
+      "compression_type": "None",
+      "description": "Format version 5 with CRC32C checksum and no compression"
+    },
+    {
+      "path": "sst_files/v5/v5_crc32c_snappy.sst",
+      "format_version": 5,
+      "checksum_type": "CRC32C",
+      "compression_type": "Snappy",
+      "description": "Format version 5 with CRC32C checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v5/v5_crc32c_lz4.sst",
+      "format_version": 5,
+      "checksum_type": "CRC32C",
+      "compression_type": "LZ4",
+      "description": "Format version 5 with CRC32C checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v5/v5_crc32c_zstd.sst",
+      "format_version": 5,
+      "checksum_type": "CRC32C",
+      "compression_type": "ZSTD",
+      "description": "Format version 5 with CRC32C checksum and ZSTD compression"
+    },
+    {
+      "path": "sst_files/v5/v5_xxh3_none.sst",
+      "format_version": 5,
+      "checksum_type": "XXH3",
+      "compression_type": "None",
+      "description": "Format version 5 with XXH3 checksum and no compression"
+    },
+    {
+      "path": "sst_files/v5/v5_xxh3_snappy.sst",
+      "format_version": 5,
+      "checksum_type": "XXH3",
+      "compression_type": "Snappy",
+      "description": "Format version 5 with XXH3 checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v5/v5_xxh3_lz4.sst",
+      "format_version": 5,
+      "checksum_type": "XXH3",
+      "compression_type": "LZ4",
+      "description": "Format version 5 with XXH3 checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v5/v5_xxh3_zstd.sst",
+      "format_version": 5,
+      "checksum_type": "XXH3",
+      "compression_type": "ZSTD",
+      "description": "Format version 5 with XXH3 checksum and ZSTD compression"
+    },
+    {
+      "path": "sst_files/v6/v6_crc32c_none.sst",
+      "format_version": 6,
+      "checksum_type": "CRC32C",
+      "compression_type": "None",
+      "description": "Format version 6 with CRC32C checksum and no compression"
+    },
+    {
+      "path": "sst_files/v6/v6_crc32c_snappy.sst",
+      "format_version": 6,
+      "checksum_type": "CRC32C",
+      "compression_type": "Snappy",
+      "description": "Format version 6 with CRC32C checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v6/v6_crc32c_lz4.sst",
+      "format_version": 6,
+      "checksum_type": "CRC32C",
+      "compression_type": "LZ4",
+      "description": "Format version 6 with CRC32C checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v6/v6_crc32c_zstd.sst",
+      "format_version": 6,
+      "checksum_type": "CRC32C",
+      "compression_type": "ZSTD",
+      "description": "Format version 6 with CRC32C checksum and ZSTD compression"
+    },
+    {
+      "path": "sst_files/v6/v6_xxh3_none.sst",
+      "format_version": 6,
+      "checksum_type": "XXH3",
+      "compression_type": "None",
+      "description": "Format version 6 with XXH3 checksum and no compression"
+    },
+    {
+      "path": "sst_files/v6/v6_xxh3_snappy.sst",
+      "format_version": 6,
+      "checksum_type": "XXH3",
+      "compression_type": "Snappy",
+      "description": "Format version 6 with XXH3 checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v6/v6_xxh3_lz4.sst",
+      "format_version": 6,
+      "checksum_type": "XXH3",
+      "compression_type": "LZ4",
+      "description": "Format version 6 with XXH3 checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v6/v6_xxh3_zstd.sst",
+      "format_version": 6,
+      "checksum_type": "XXH3",
+      "compression_type": "ZSTD",
+      "description": "Format version 6 with XXH3 checksum and ZSTD compression"
+    },
+    {
+      "path": "sst_files/v7/v7_crc32c_none.sst",
+      "format_version": 7,
+      "checksum_type": "CRC32C",
+      "compression_type": "None",
+      "description": "Format version 7 with CRC32C checksum and no compression"
+    },
+    {
+      "path": "sst_files/v7/v7_crc32c_snappy.sst",
+      "format_version": 7,
+      "checksum_type": "CRC32C",
+      "compression_type": "Snappy",
+      "description": "Format version 7 with CRC32C checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v7/v7_crc32c_lz4.sst",
+      "format_version": 7,
+      "checksum_type": "CRC32C",
+      "compression_type": "LZ4",
+      "description": "Format version 7 with CRC32C checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v7/v7_crc32c_zstd.sst",
+      "format_version": 7,
+      "checksum_type": "CRC32C",
+      "compression_type": "ZSTD",
+      "description": "Format version 7 with CRC32C checksum and ZSTD compression"
+    },
+    {
+      "path": "sst_files/v7/v7_xxh3_none.sst",
+      "format_version": 7,
+      "checksum_type": "XXH3",
+      "compression_type": "None",
+      "description": "Format version 7 with XXH3 checksum and no compression"
+    },
+    {
+      "path": "sst_files/v7/v7_xxh3_snappy.sst",
+      "format_version": 7,
+      "checksum_type": "XXH3",
+      "compression_type": "Snappy",
+      "description": "Format version 7 with XXH3 checksum and Snappy compression"
+    },
+    {
+      "path": "sst_files/v7/v7_xxh3_lz4.sst",
+      "format_version": 7,
+      "checksum_type": "XXH3",
+      "compression_type": "LZ4",
+      "description": "Format version 7 with XXH3 checksum and LZ4 compression"
+    },
+    {
+      "path": "sst_files/v7/v7_xxh3_zstd.sst",
+      "format_version": 7,
+      "checksum_type": "XXH3",
+      "compression_type": "ZSTD",
+      "description": "Format version 7 with XXH3 checksum and ZSTD compression"
+    }
+  ],
+  "compression_types": [
+    "None (kNoCompression)",
+    "Snappy (kSnappyCompression)",
+    "LZ4 (kLZ4Compression)",
+    "ZSTD (kZSTD)"
+  ],
+  "checksum_types": [
+    "CRC32C (kCRC32c)",
+    "XXH3 (kXXH3)"
+  ],
+  "format_versions": [5, 6, 7],
+  "notes": [
+    "All files contain 50 key-value pairs with keys 'key000' to 'key049'",
+    "Values follow the pattern 'value_v{version}_{checksum}_{compression}_{index}'",
+    "Files are generated using RocksDB's SstFileWriter with the specified parameters",
+    "Minimal set includes 24 files (3 versions × 2 checksums × 4 compressions)",
+    "Full matrix would include 90 files (3 versions × 5 checksums × 6 compressions)"
+  ]
+}

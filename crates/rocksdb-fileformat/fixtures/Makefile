@@ -19,7 +19,7 @@ endif
 TARGET = generate_fixtures
 SOURCE = generate_fixtures.cpp
 
-.PHONY: all run clean install-deps help
+.PHONY: all run clean install-deps help matrix minimal
 
 all: $(TARGET)
 
@@ -29,9 +29,17 @@ $(TARGET): check-deps $(SOURCE)
 run: $(TARGET)
 	./$(TARGET)
 
+# Generate all combinations (default behavior)
+matrix: $(TARGET)
+	./$(TARGET) --all
+
+# Generate minimal set for testing (fewer combinations)
+minimal: $(TARGET)
+	./$(TARGET) --minimal
+
 clean:
 	rm -f $(TARGET)
-	rm -f sst_files/*.sst
+	rm -rf sst_files/
 
 install-deps:
 	@echo "Installing RocksDB dependencies..."
@@ -43,9 +51,15 @@ help:
 	@echo "Available targets:"
 	@echo "  all        - Build the fixture generator"
 	@echo "  run        - Build and run the generator to create SST fixtures"
+	@echo "  matrix     - Generate all combinations of version+checksum+compression"
+	@echo "  minimal    - Generate minimal set for testing"
 	@echo "  clean      - Remove generated files"
 	@echo "  install-deps - Show instructions for installing RocksDB"
 	@echo "  help       - Show this help message"
+	@echo ""
+	@echo "Advanced usage:"
+	@echo "  make $(TARGET) && ./$(TARGET) --version 5 --checksum crc32c --compression snappy"
+	@echo "  make $(TARGET) && ./$(TARGET) --help"
 
 # Check if RocksDB is available before building
 check-deps:
