@@ -19,7 +19,7 @@ endif
 TARGET = generate_fixtures
 SOURCE = generate_fixtures.cpp
 
-.PHONY: all run clean install-deps help matrix minimal
+.PHONY: all run clean install-deps help matrix
 
 all: $(TARGET)
 
@@ -33,9 +33,6 @@ run: $(TARGET)
 matrix: $(TARGET)
 	./$(TARGET) --all
 
-# Generate minimal set for testing (fewer combinations)
-minimal: $(TARGET)
-	./$(TARGET) --minimal
 
 clean:
 	rm -f $(TARGET)
@@ -50,9 +47,8 @@ install-deps:
 help:
 	@echo "Available targets:"
 	@echo "  all        - Build the fixture generator"
-	@echo "  run        - Build and run the generator to create SST fixtures"
-	@echo "  matrix     - Generate all combinations of version+checksum+compression"
-	@echo "  minimal    - Generate minimal set for testing"
+	@echo "  run        - Build and run generator (60 files: 3 versions × 5 checksums × 4 compressions)"
+	@echo "  matrix     - Generate full matrix with all compressions (90 files)"
 	@echo "  clean      - Remove generated files"
 	@echo "  install-deps - Show instructions for installing RocksDB"
 	@echo "  help       - Show this help message"

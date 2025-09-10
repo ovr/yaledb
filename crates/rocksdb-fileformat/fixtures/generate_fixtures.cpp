@@ -104,12 +104,13 @@ bool generate_sst_file(int format_version, ChecksumType checksum_type,
 void print_usage(const char* program_name) {
     std::cout << "Usage: " << program_name << " [options]\n";
     std::cout << "Options:\n";
-    std::cout << "  --all          Generate all combinations (default)\n";
-    std::cout << "  --minimal      Generate minimal set for testing\n";
+    std::cout << "  --all          Generate all combinations (includes zlib,lz4hc - 90 files)\n";
     std::cout << "  --version V    Generate only for format version V (5,6,7)\n";
     std::cout << "  --checksum C   Generate only for checksum type C (nocsum,crc32c,xxhash,xxhash64,xxh3)\n";
-    std::cout << "  --compression C Generate only for compression type C (none,snappy,zlib,lz4,lz4hc,zstd)\n";
+    std::cout << "  --compression C Generate only for compression type C (none,snappy,lz4,zstd)\n";
     std::cout << "  --help         Show this help\n";
+    std::cout << "\n";
+    std::cout << "Default: Generates 60 files (3 versions × 5 checksums × 4 compressions)\n";
 }
 
 std::string build_filename(int version, ChecksumType checksum, CompressionType compression) {
@@ -165,10 +166,10 @@ bool generate_matrix(const std::vector<int>& versions,
 }
 
 int main(int argc, char* argv[]) {
-    // Default: all combinations
+    // Default: comprehensive testing set (60 files)
     std::vector<int> versions = {5, 6, 7};
     std::vector<ChecksumType> checksums = {ChecksumType::kNoChecksum, ChecksumType::kCRC32c, ChecksumType::kxxHash, ChecksumType::kxxHash64, ChecksumType::kXXH3};
-    std::vector<CompressionType> compressions = {CompressionType::kNoCompression, CompressionType::kSnappyCompression, CompressionType::kZlibCompression, CompressionType::kLZ4Compression, CompressionType::kLZ4HCCompression, CompressionType::kZSTD};
+    std::vector<CompressionType> compressions = {CompressionType::kNoCompression, CompressionType::kSnappyCompression, CompressionType::kLZ4Compression, CompressionType::kZSTD};
     
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
@@ -177,11 +178,11 @@ int main(int argc, char* argv[]) {
         if (arg == "--help") {
             print_usage(argv[0]);
             return 0;
-        } else if (arg == "--minimal") {
-            // Minimal set for basic testing - include more compression types
+        } else if (arg == "--all") {
+            // Full matrix with all compressions including less common ones
             versions = {5, 6, 7};
-            checksums = {ChecksumType::kCRC32c, ChecksumType::kXXH3};
-            compressions = {CompressionType::kNoCompression, CompressionType::kSnappyCompression, CompressionType::kLZ4Compression, CompressionType::kZSTD};
+            checksums = {ChecksumType::kNoChecksum, ChecksumType::kCRC32c, ChecksumType::kxxHash, ChecksumType::kxxHash64, ChecksumType::kXXH3};
+            compressions = {CompressionType::kNoCompression, CompressionType::kSnappyCompression, CompressionType::kZlibCompression, CompressionType::kLZ4Compression, CompressionType::kLZ4HCCompression, CompressionType::kZSTD};
         } else if (arg == "--version" && i + 1 < argc) {
             versions = {std::atoi(argv[++i])};
         } else if (arg == "--checksum" && i + 1 < argc) {
