@@ -288,8 +288,7 @@ mod tests {
 
         // Read data back
         let mut reader = SstReader::open(&path)?;
-        let footer = reader.read_footer()?;
-        assert!(footer.index_handle.size > 0);
+        assert!(reader.get_footer().index_handle.size > 0);
         Ok(())
     }
 

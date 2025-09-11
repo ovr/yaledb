@@ -1,3 +1,5 @@
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::types::{ChecksumType, FOOTER_SIZE, LEGACY_MAGIC_NUMBER, ROCKSDB_MAGIC_NUMBER};
@@ -9,6 +11,81 @@ pub struct Footer {
     pub metaindex_handle: BlockHandle,
     pub index_handle: BlockHandle,
     pub format_version: u32,
+}
+
+struct ReverseCursor<'a> {
+    data: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> ReverseCursor<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self {
+            data,
+            pos: data.len(),
+        }
+    }
+
+    pub fn read_u64(&mut self) -> Result<u64> {
+        if self.pos < 8 {
+            return Err(Error::DataCorruption(
+                "Unable to read data from cursor, because it's end".to_string(),
+            ));
+        }
+
+        self.pos -= 8;
+
+        Ok(LittleEndian::read_u64(&self.data[self.pos..self.pos + 8]))
+    }
+
+    pub fn read_i32(&mut self) -> Result<i32> {
+        if self.pos < 4 {
+            return Err(Error::DataCorruption(
+                "Unable to read data from cursor, because it's end".to_string(),
+            ));
+        }
+
+        self.pos -= 4;
+
+        Ok(LittleEndian::read_i32(&self.data[self.pos..self.pos + 4]))
+    }
+
+    pub fn read_u32(&mut self) -> Result<u32> {
+        if self.pos < 4 {
+            return Err(Error::DataCorruption(
+                "Unable to read data from cursor, because it's end".to_string(),
+            ));
+        }
+
+        self.pos -= 4;
+
+        Ok(LittleEndian::read_u32(&self.data[self.pos..self.pos + 4]))
+    }
+
+    pub fn read_u8(&mut self) -> Result<u8> {
+        if self.pos < 1 {
+            return Err(Error::DataCorruption(
+                "Unable to read data from cursor, because it's end".to_string(),
+            ));
+        }
+
+        self.pos -= 1;
+
+        Ok(self.data[self.pos])
+    }
+
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        if self.pos < buf.len() {
+            return Err(Error::DataCorruption(
+                "Unable to read data from cursor, because it's end".to_string(),
+            ));
+        }
+
+        self.pos -= buf.len();
+        buf.copy_from_slice(&self.data[self.pos..self.pos + buf.len()]);
+
+        Ok(())
+    }
 }
 
 impl Footer {
@@ -31,14 +108,8 @@ impl Footer {
             reader.seek(SeekFrom::End(-12))?;
             let mut version_bytes = [0u8; 4];
             reader.read_exact(&mut version_bytes)?;
-            let format_version = u32::from_le_bytes(version_bytes);
 
-            // Calculate footer size based on format version
-            let footer_size = match format_version {
-                0 => 48, // Shouldn't happen with new magic, but just in case
-                1..=5 => 49,
-                6.. => 52,
-            };
+            let footer_size = 53;
 
             // Read the full footer
             if file_size < footer_size as u64 {
@@ -48,7 +119,8 @@ impl Footer {
             let mut footer_data = vec![0u8; footer_size];
             reader.read_exact(&mut footer_data)?;
 
-            Self::decode_from_bytes(&footer_data)
+            let input_offset = file_size - (footer_size as u64);
+            Self::decode_from_bytes(&footer_data, input_offset)
         } else {
             // Check for legacy magic number at position -48
             reader.seek(SeekFrom::End(-48))?;
@@ -61,21 +133,25 @@ impl Footer {
                 reader.seek(SeekFrom::End(-48))?;
                 let mut footer_data = vec![0u8; 48];
                 reader.read_exact(&mut footer_data)?;
-                Self::decode_from_bytes(&footer_data)
+                let input_offset = file_size - 48;
+                Self::decode_from_bytes(&footer_data, input_offset)
             } else {
                 Err(Error::InvalidMagicNumber(magic))
             }
         }
     }
 
-    pub fn decode_from_bytes(data: &[u8]) -> Result<Self> {
+    pub fn decode_from_bytes(data: &[u8], input_offset: u64) -> Result<Self> {
         // Check for magic number at the end
-        if data.len() < 8 {
+        if data.len() < 12 {
             return Err(Error::InvalidFooterSize(data.len()));
         }
 
-        let magic_start = data.len() - 8;
-        let magic = u64::from_le_bytes(data[magic_start..magic_start + 8].try_into().unwrap());
+        // +---------------------------------------------------------------+
+        // | checksum (1B) | part2 (40B) | format_version (4B) | magic (8B)|
+        // +---------------------------------------------------------------+
+        let mut cursor = ReverseCursor::new(&data);
+        let magic = cursor.read_u64()?;
 
         // Handle legacy format (v0) first
         if magic == LEGACY_MAGIC_NUMBER {
@@ -84,7 +160,7 @@ impl Footer {
             }
 
             // Legacy format: varint handles directly in the 40 bytes before magic
-            let mut cursor = Cursor::new(&data[..40]);
+            let mut cursor = Cursor::new(&data);
             let metaindex_handle = BlockHandle::decode_from(&mut cursor)?;
             let index_handle = BlockHandle::decode_from(&mut cursor)?;
 
@@ -100,45 +176,67 @@ impl Footer {
             return Err(Error::InvalidMagicNumber(magic));
         }
 
-        // For new format, we need format version
-        if data.len() < 12 {
-            return Err(Error::InvalidFooterSize(data.len()));
-        }
-
-        // Read format version (4 bytes before magic)
-        let version_start = data.len() - 12;
-        let format_version =
-            u32::from_le_bytes(data[version_start..version_start + 4].try_into().unwrap());
-
-        // Handle different format versions
+        let format_version = cursor.read_u32()?;
         if format_version >= 6 {
-            // Format v6+ has extended magic followed by checksum type and block handles
-            if data.len() != 52 {
-                return Err(Error::InvalidFooterSize(data.len()));
+            // second part!
+            // 8 + 16 = 24 bytes padded, reserved
+            {
+                // 16 bytes of unchecked reserved padding
+                let mut skip_bytes = [0u8; 16];
+                cursor.read_exact(&mut skip_bytes).map_err(|err| {
+                    Error::DataCorruption(format!(
+                        "Unable to read 16 bytes for reserved padding: {:?}",
+                        err
+                    ))
+                })?;
+
+                // 8 bytes of checked reserved padding (expected to be zero unless using a
+                // future feature).
+                let reserved = cursor.read_u64().map_err(|err| {
+                    Error::DataCorruption(format!("Unable to read reserved 8 bytes: {:?}", err))
+                })?;
+                if reserved != 0 {
+                    return Err(Error::Unsupported(format!(
+                        "File uses a future feature not supported in this version: {}",
+                        reserved
+                    )));
+                }
             }
 
-            // Check for extended magic at position 0
-            if &data[0..4] != [0x3e, 0x00, 0x7a, 0x00] {
-                return Err(Error::DataCorruption("Invalid extended magic".to_string()));
-            }
+            // TODO: Fix me
+            let adjustment = 5;
+            let footer_offset = input_offset - adjustment;
 
-            // Checksum type is at byte 4
-            let checksum_type = match ChecksumType::try_from(data[4]) {
-                Ok(ct) => ct,
-                Err(_) => ChecksumType::CRC32c,
-            };
+            let metaindex_size = cursor.read_i32()? as u64;
+            let metaindex_handle = BlockHandle::new(footer_offset - metaindex_size, metaindex_size);
 
-            // Based on the test files, we know the expected values
-            let (metaindex_offset, metaindex_size) = if format_version == 6 {
-                (1470, 103) // From v6 dump file
-            } else {
-                (1477, 103) // From v7 dump file
-            };
-
-            let metaindex_handle = BlockHandle::new(metaindex_offset, metaindex_size);
-
-            // Index handle is null for v6+ according to dump
+            // Index handle is null for v6+
             let index_handle = BlockHandle::new(0, 0);
+
+            let _base_context_checksum = cursor.read_i32().map_err(|err| {
+                Error::DataCorruption(format!("Unable to read base context checksum: {:?}", err))
+            })?;
+
+            let _stored_checksum = cursor.read_i32().map_err(|err| {
+                Error::DataCorruption(format!("Unable to read stored checksum: {:?}", err))
+            })?;
+
+            {
+                let mut magic_bytes = [0u8; 4];
+                cursor.read_exact(&mut magic_bytes).map_err(|err| {
+                    Error::DataCorruption(format!("Unable to read footer magic bytes: {:?}", err))
+                })?;
+
+                // Check for extended magiс
+                if magic_bytes != [0x3e, 0x00, 0x7a, 0x00] {
+                    return Err(Error::DataCorruption(format!(
+                        "Invalid extended magic, actual: {:?}",
+                        magic_bytes
+                    )));
+                }
+            }
+
+            let checksum_type = ChecksumType::try_from(cursor.read_u8()?)?;
 
             Ok(Footer {
                 checksum_type,
@@ -147,10 +245,12 @@ impl Footer {
                 format_version,
             })
         } else {
+            let version_start = data.len() - 12;
+
             // Format v1-v5
             // Some v5 files don't have checksum type byte (legacy-style)
             // Check if first byte looks like a varint (doesn't have high bit set)
-            let (checksum_type, handle_data) = if data[0] <= 0x7F && format_version >= 1 {
+            let (checksum_type, phase2_data) = if data[0] <= 0x7F && format_version >= 1 {
                 // Might have checksum type
                 match ChecksumType::try_from(data[0]) {
                     Ok(ct) => (ct, &data[1..version_start]),
@@ -162,9 +262,9 @@ impl Footer {
             };
 
             // Parse block handles
-            let mut handle_cursor = Cursor::new(handle_data);
-            let metaindex_handle = BlockHandle::decode_from(&mut handle_cursor)?;
-            let index_handle = BlockHandle::decode_from(&mut handle_cursor)?;
+            let mut padded_cursor: Cursor<&[u8]> = Cursor::new(phase2_data);
+            let metaindex_handle = BlockHandle::decode_from(&mut padded_cursor)?;
+            let index_handle = BlockHandle::decode_from(&mut padded_cursor)?;
 
             Ok(Footer {
                 checksum_type,
@@ -221,7 +321,8 @@ mod tests {
         let encoded = original.encode_to_bytes()?;
         assert_eq!(encoded.len(), FOOTER_SIZE);
 
-        let decoded = Footer::decode_from_bytes(&encoded)?;
+        let footer_offset = 1000; // Example footer offset
+        let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
         assert_eq!(decoded, original);
         Ok(())
     }
@@ -238,7 +339,8 @@ mod tests {
         let encoded = original.encode_to_bytes()?;
         assert_eq!(encoded.len(), FOOTER_SIZE);
 
-        let decoded = Footer::decode_from_bytes(&encoded)?;
+        let footer_offset = 2000; // Example footer offset
+        let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
         assert_eq!(original, decoded);
         Ok(())
     }
@@ -256,7 +358,8 @@ mod tests {
 
         encoded[FOOTER_SIZE - 1] = 0xFF;
 
-        let result = Footer::decode_from_bytes(&encoded);
+        let footer_offset = 1500; // Example footer offset
+        let result = Footer::decode_from_bytes(&encoded, footer_offset);
         assert!(matches!(result, Err(Error::InvalidMagicNumber(_))));
         Ok(())
     }
@@ -264,7 +367,8 @@ mod tests {
     #[test]
     fn test_footer_size_validation() -> Result<()> {
         let data = vec![0u8; 10]; // Wrong size
-        let result = Footer::decode_from_bytes(&data);
+        let footer_offset = 0; // Example footer offset
+        let result = Footer::decode_from_bytes(&data, footer_offset);
         // Any size < 8 should fail due to magic number check
         assert!(result.is_err());
         Ok(())

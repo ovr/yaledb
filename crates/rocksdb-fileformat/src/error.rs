@@ -17,6 +17,9 @@ pub enum Error {
     #[error("Unsupported compression type: {0}")]
     UnsupportedCompressionType(u8),
 
+    #[error("Unsupported: {0}")]
+    Unsupported(String),
+
     #[error("Unsupported checksum type: {0}")]
     UnsupportedChecksumType(u8),
 

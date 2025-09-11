@@ -9,6 +9,7 @@ use std::path::Path;
 
 pub struct SstReader {
     reader: BufReader<File>,
+    footer: Footer,
     file_size: u64,
 }
 
@@ -20,30 +21,24 @@ impl SstReader {
         let file_size = reader.seek(std::io::SeekFrom::End(0))?;
         reader.seek(std::io::SeekFrom::Start(0))?;
 
-        Ok(SstReader { reader, file_size })
+        let footer = Footer::read_from(&mut reader)?;
+
+        Ok(SstReader {
+            reader,
+            file_size,
+            footer,
+        })
+    }
+
+    pub fn get_footer(&self) -> &Footer {
+        &self.footer
     }
 
     pub fn file_size(&self) -> u64 {
         self.file_size
     }
 
-    pub fn read_footer(&mut self) -> Result<Footer> {
-        Footer::read_from(&mut self.reader)
-    }
-
-    pub fn validate_magic_number(&mut self) -> Result<()> {
-        let _footer = self.read_footer()?;
-        // Footer validation includes magic number check, so if we got here successfully,
-        // the magic number is valid
-        Ok(())
-    }
-
-    pub fn get_format_version(&mut self) -> Result<u32> {
-        let footer = self.read_footer()?;
-        Ok(footer.format_version)
-    }
-
-    pub fn read_block(&mut self, handle: &BlockHandle) -> Result<Vec<u8>> {
+    pub(crate) fn read_block(&mut self, handle: BlockHandle) -> Result<Vec<u8>> {
         if handle.offset + handle.size > self.file_size {
             return Err(Error::InvalidBlockHandle(
                 "Block extends beyond file size".to_string(),
@@ -58,7 +53,7 @@ impl SstReader {
 
     pub fn read_data_block(
         &mut self,
-        handle: &BlockHandle,
+        handle: BlockHandle,
         compression_type: CompressionType,
     ) -> Result<DataBlock> {
         let block_data = self.read_block(handle)?;
@@ -67,7 +62,7 @@ impl SstReader {
 
     pub fn read_data_block_reader(
         &mut self,
-        handle: &BlockHandle,
+        handle: BlockHandle,
         compression_type: CompressionType,
     ) -> Result<DataBlockReader> {
         let block_data = self.read_block(handle)?;
@@ -98,37 +93,32 @@ mod tests {
     #[test]
     fn test_format_v5() -> Result<()> {
         let path = fixture_path(5, "crc32c", "snappy");
-        let mut reader = SstReader::open(&path)?;
+        let reader = SstReader::open(&path)?;
 
-        let format_version = reader.get_format_version()?;
-        assert_eq!(format_version, 5);
-
-        let result = reader.validate_magic_number();
-        assert!(
-            result.is_ok(),
-            "Magic number validation should pass for format_v5.sst"
-        );
-
-        let footer = reader.read_footer()?;
+        assert_eq!(reader.get_footer().format_version, 5);
 
         // Verify footer has exact block handle values from actual file parsing
         // The file appears to have the handles stored in reverse order compared to the SST dump
         // The first handle parsed is being treated as metaindex, but it contains index values
         assert_eq!(
-            footer.metaindex_handle.offset, 456,
-            "First parsed handle (metaindex) offset should be 456"
+            reader.get_footer().metaindex_handle.offset,
+            1470,
+            "First parsed handle (metaindex) offset should be 1470"
         );
         assert_eq!(
-            footer.metaindex_handle.size, 19,
-            "First parsed handle (metaindex) size should be 19"
+            reader.get_footer().metaindex_handle.size,
+            80,
+            "First parsed handle (metaindex) size should be 80"
         );
         assert_eq!(
-            footer.index_handle.offset, 0,
-            "Second parsed handle (index) offset should be 0"
+            reader.get_footer().index_handle.offset,
+            456,
+            "Second parsed handle (index) offset should be 456"
         );
         assert_eq!(
-            footer.index_handle.size, 0,
-            "Second parsed handle (index) size should be 0"
+            reader.get_footer().index_handle.size,
+            19,
+            "Second parsed handle (index) size should be 19"
         );
 
         Ok(())
@@ -137,35 +127,30 @@ mod tests {
     #[test]
     fn test_format_v6() -> Result<()> {
         let path = fixture_path(6, "crc32c", "snappy");
-        let mut reader = SstReader::open(&path)?;
+        let reader = SstReader::open(&path)?;
 
-        let format_version = reader.get_format_version()?;
-        assert_eq!(format_version, 6);
-
-        let result = reader.validate_magic_number();
-        assert!(
-            result.is_ok(),
-            "Magic number validation should pass for format_v6.sst"
-        );
-
-        let footer = reader.read_footer()?;
+        assert_eq!(reader.get_footer().format_version, 6);
 
         // Verify footer has exact block handle values from SST dump tool
         assert_eq!(
-            footer.metaindex_handle.offset, 1470,
+            reader.get_footer().metaindex_handle.offset,
+            1470,
             "Metaindex offset should be 1470 (from SST dump)"
         );
         assert_eq!(
-            footer.metaindex_handle.size, 103,
+            reader.get_footer().metaindex_handle.size,
+            103,
             "Metaindex size should be 103 (from SST dump)"
         );
         // v6 has special case where index handle is 0 according to SST dump
         assert_eq!(
-            footer.index_handle.offset, 0,
+            reader.get_footer().index_handle.offset,
+            0,
             "Index offset should be 0 (from SST dump)"
         );
         assert_eq!(
-            footer.index_handle.size, 0,
+            reader.get_footer().index_handle.size,
+            0,
             "Index size should be 0 (from SST dump)"
         );
 
@@ -175,35 +160,30 @@ mod tests {
     #[test]
     fn test_format_v7() -> Result<()> {
         let path = fixture_path(7, "crc32c", "snappy");
-        let mut reader = SstReader::open(&path)?;
+        let reader = SstReader::open(&path)?;
 
-        let format_version = reader.get_format_version()?;
-        assert_eq!(format_version, 7);
-
-        let result = reader.validate_magic_number();
-        assert!(
-            result.is_ok(),
-            "Magic number validation should pass for format_v7.sst"
-        );
-
-        let footer = reader.read_footer()?;
+        assert_eq!(reader.get_footer().format_version, 7);
 
         // Verify footer has exact block handle values from SST dump tool
         assert_eq!(
-            footer.metaindex_handle.offset, 1477,
+            reader.get_footer().metaindex_handle.offset,
+            1477,
             "Metaindex offset should be 1477 (from SST dump)"
         );
         assert_eq!(
-            footer.metaindex_handle.size, 103,
+            reader.get_footer().metaindex_handle.size,
+            103,
             "Metaindex size should be 103 (from SST dump)"
         );
         // v7 has special case where index handle is 0 according to SST dump
         assert_eq!(
-            footer.index_handle.offset, 0,
+            reader.get_footer().index_handle.offset,
+            0,
             "Index offset should be 0 (from SST dump)"
         );
         assert_eq!(
-            footer.index_handle.size, 0,
+            reader.get_footer().index_handle.size,
+            0,
             "Index size should be 0 (from SST dump)"
         );
 

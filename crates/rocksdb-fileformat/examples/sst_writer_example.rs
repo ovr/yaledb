@@ -54,16 +54,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check basic file properties
     println!("File size: {}", reader.file_size());
 
-    // Validate magic number
-    reader.validate_magic_number()?;
-    println!("✓ Magic number is valid");
-
-    // Check format version
-    let format_version = reader.get_format_version()?;
+    let footer = reader.get_footer();
+    let format_version = footer.format_version;
     println!("✓ Format version: {}", format_version);
-
-    // Read footer
-    let footer = reader.read_footer()?;
     println!("✓ Footer read successfully");
     println!(
         "  Index block: offset={}, size={}",

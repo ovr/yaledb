@@ -13,6 +13,14 @@ impl BlockHandle {
         Self { offset, size }
     }
 
+    pub fn null() -> Self {
+        Self { offset: 0, size: 0 }
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.offset == 0 && self.size == 0
+    }
+
     pub fn decode_from<R: Read>(reader: &mut R) -> Result<Self> {
         let offset = read_varint64(reader)?;
         let size = read_varint64(reader)?;

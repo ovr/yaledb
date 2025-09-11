@@ -27,8 +27,8 @@ pub struct SstTableIterator {
 
 impl SstTableIterator {
     pub fn new(mut sst_reader: SstReader, compression_type: CompressionType) -> Result<Self> {
-        let footer = sst_reader.read_footer()?;
-        let index_data = sst_reader.read_block(&footer.index_handle)?;
+        let footer = sst_reader.get_footer();
+        let index_data = sst_reader.read_block(footer.index_handle.clone())?;
         let index_block = IndexBlock::new(&index_data, CompressionType::None)?;
         let all_block_handles = index_block.get_all_block_handles()?;
 
@@ -50,7 +50,7 @@ impl SstTableIterator {
             return Ok(());
         }
 
-        let block_handle = &self.all_block_handles[block_index];
+        let block_handle = self.all_block_handles[block_index].clone();
         let data_block_reader = self
             .sst_reader
             .read_data_block_reader(block_handle, self.compression_type)?;
