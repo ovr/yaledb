@@ -19,4 +19,4 @@ pub use index_block::{IndexBlock, IndexEntry};
 pub use iterator::{SstEntryIterator, SstIterator, SstTableIterator};
 pub use sst_file_writer::{EntryType, SstFileWriter};
 pub use sst_reader::SstReader;
-pub use types::{CompressionType, FormatVersion, Options};
+pub use types::{ChecksumType, CompressionType, FormatVersion, ReadOptions, WriteOptions};

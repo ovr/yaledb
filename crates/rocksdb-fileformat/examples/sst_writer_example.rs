@@ -1,4 +1,4 @@
-use rocksdb_fileformat::{CompressionType, FormatVersion, Options, SstFileWriter, SstReader};
+use rocksdb_fileformat::{CompressionType, FormatVersion, SstFileWriter, SstReader, WriteOptions};
 use tempfile::tempdir;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sst_path = dir.path().join("example.sst");
 
     // Configure options
-    let options = Options {
+    let options = WriteOptions {
         compression: CompressionType::Snappy,
         block_size: 4096,
         block_restart_interval: 16,

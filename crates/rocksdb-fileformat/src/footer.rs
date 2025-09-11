@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};

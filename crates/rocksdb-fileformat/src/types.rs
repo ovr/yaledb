@@ -124,16 +124,16 @@ impl TryFrom<u32> for FormatVersion {
 
 /// Configuration options for SstFileWriter
 #[derive(Debug, Clone)]
-pub struct Options {
+pub struct WriteOptions {
     pub compression: CompressionType,
     pub block_size: usize,
     pub block_restart_interval: usize,
     pub format_version: FormatVersion,
 }
 
-impl Default for Options {
+impl Default for WriteOptions {
     fn default() -> Self {
-        Options {
+        WriteOptions {
             compression: CompressionType::None,
             block_size: DEFAULT_BLOCK_SIZE,
             block_restart_interval: DEFAULT_BLOCK_RESTART_INTERVAL,

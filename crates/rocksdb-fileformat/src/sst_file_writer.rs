@@ -2,7 +2,7 @@ use crate::block_builder::{DataBlockBuilder, IndexBlockBuilder};
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
-use crate::types::{ChecksumType, CompressionType, Options};
+use crate::types::{ChecksumType, CompressionType, WriteOptions};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -18,7 +18,7 @@ pub enum EntryType {
 
 /// SST file writer that matches RocksDB's SstFileWriter API
 pub struct SstFileWriter {
-    options: Options,
+    options: WriteOptions,
     writer: Option<BufWriter<File>>,
     data_block_builder: DataBlockBuilder,
     index_block_builder: IndexBlockBuilder,
@@ -31,7 +31,7 @@ pub struct SstFileWriter {
 
 impl SstFileWriter {
     /// Create a new SstFileWriter with the given options
-    pub fn create(opts: &Options) -> Self {
+    pub fn create(opts: &WriteOptions) -> Self {
         SstFileWriter {
             options: opts.clone(),
             writer: None,
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_create_writer() -> Result<()> {
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let writer = SstFileWriter::create(&opts);
         assert_eq!(writer.file_size(), 0);
         Ok(())
@@ -269,7 +269,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
-        let opts = Options {
+        let opts = WriteOptions {
             compression: CompressionType::None,
             block_size: 4096,
             block_restart_interval: 16,
@@ -287,7 +287,7 @@ mod tests {
         }
 
         // Read data back
-        let mut reader = SstReader::open(&path)?;
+        let reader = SstReader::open(&path)?;
         assert!(reader.get_footer().index_handle.size > 0);
         Ok(())
     }
@@ -298,7 +298,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let mut writer = SstFileWriter::create(&opts);
         writer.open(&path)?;
 
@@ -316,7 +316,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let mut writer = SstFileWriter::create(&opts);
         writer.open(&path)?;
 
@@ -335,7 +335,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
-        let opts = Options {
+        let opts = WriteOptions {
             compression: CompressionType::Snappy,
             block_size: 1024, // Small block size to ensure compression
             block_restart_interval: 16,
@@ -363,7 +363,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("empty.sst");
 
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let mut writer = SstFileWriter::create(&opts);
         writer.open(&path)?;
         writer.finish()?;
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_file_not_open() -> Result<()> {
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let mut writer = SstFileWriter::create(&opts);
 
         // Should fail when no file is open
@@ -390,7 +390,7 @@ mod tests {
             tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
         let path = dir.path().join("test.sst");
 
-        let opts = Options::default();
+        let opts = WriteOptions::default();
         let mut writer = SstFileWriter::create(&opts);
         writer.open(&path)?;
         writer.finish()?;

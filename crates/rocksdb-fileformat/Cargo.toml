@@ -12,6 +12,8 @@ lz4 = "1.24"
 zstd = "0.13"
 flate2 = "1.0"
 snap = "1.1"
+crc32c = "0.6"
+xxhash_rust = { version = "0.8", package = "xxhash-rust", features = ["xxh32", "xxh64", "xxh3"] }
 
 [dev-dependencies]
 tempfile = "3.8"
