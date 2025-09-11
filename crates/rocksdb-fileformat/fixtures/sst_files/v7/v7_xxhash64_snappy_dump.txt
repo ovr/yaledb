@@ -1,0 +1,220 @@
+Footer Details:
+--------------------------------------
+  metaindex handle: C60B67 offset: 1478 size: 103
+  index handle: 0000 offset: 0 size: 0
+  table_magic_number: 9863518390377041911
+  format version: 7
+
+Metaindex Details:
+--------------------------------------
+  Filter block handle: FF0245
+  Properties block handle: E103E007
+
+Table Properties:
+--------------------------------------
+  # data blocks: 1
+  # entries: 50
+  # deletions: 0
+  # merge operands: 0
+  # range deletions: 0
+  raw key size: 700
+  raw average key size: 14.000000
+  raw value size: 1400
+  raw average value size: 28.000000
+  data block size: 383
+  index block size (user-key? 1, delta-value? 1): 24
+  filter block size: 69
+  # entries for filter: 50
+  (estimated) table size: 476
+  filter policy name: bloomfilter
+  prefix extractor name: nullptr
+  column family ID: N/A
+  column family name: N/A
+  comparator name: leveldb.BytewiseComparator
+  user defined timestamps persisted: true
+  largest sequence number in file: 0
+  merge operator name: nullptr
+  property collectors names: []
+  SST file compression algo: BuiltinV2;01;
+  SST file compression options: window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1; max_compressed_bytes_per_kb=896; checksum=0; 
+  creation time: 0
+  time stamp of earliest key: 0
+  time stamp of newest key: 0
+  file creation time: 0
+  slow compression estimated data size: 0
+  fast compression estimated data size: 0
+  DB identity: SST Writer
+  DB session identity: 5HTED2WXPQDRSD55UFKZ
+  DB host id: MacBookPro.home
+  original file number: 1
+  unique ID: DD93A6D3CA9D9FC8-CAF589234D28D2CB
+  Sequence number to time mapping: 
+  
+Index Details:
+--------------------------------------
+  Block key hex dump: Data block handle
+  Block key ascii
+
+  HEX    6B6579303439: 00FA02 offset 0 size 378
+  ASCII  k e y 0 4 9 
+  ------
+
+Data Block # 1 @ 00FA02
+--------------------------------------
+  HEX    6B6579303030: 76616C75655F76375F78786861736836345F736E617070795F303030
+  ASCII  k e y 0 0 0 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 0 
+  ------
+  HEX    6B6579303031: 76616C75655F76375F78786861736836345F736E617070795F303031
+  ASCII  k e y 0 0 1 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 1 
+  ------
+  HEX    6B6579303032: 76616C75655F76375F78786861736836345F736E617070795F303032
+  ASCII  k e y 0 0 2 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 2 
+  ------
+  HEX    6B6579303033: 76616C75655F76375F78786861736836345F736E617070795F303033
+  ASCII  k e y 0 0 3 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 3 
+  ------
+  HEX    6B6579303034: 76616C75655F76375F78786861736836345F736E617070795F303034
+  ASCII  k e y 0 0 4 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 4 
+  ------
+  HEX    6B6579303035: 76616C75655F76375F78786861736836345F736E617070795F303035
+  ASCII  k e y 0 0 5 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 5 
+  ------
+  HEX    6B6579303036: 76616C75655F76375F78786861736836345F736E617070795F303036
+  ASCII  k e y 0 0 6 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 6 
+  ------
+  HEX    6B6579303037: 76616C75655F76375F78786861736836345F736E617070795F303037
+  ASCII  k e y 0 0 7 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 7 
+  ------
+  HEX    6B6579303038: 76616C75655F76375F78786861736836345F736E617070795F303038
+  ASCII  k e y 0 0 8 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 8 
+  ------
+  HEX    6B6579303039: 76616C75655F76375F78786861736836345F736E617070795F303039
+  ASCII  k e y 0 0 9 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 0 9 
+  ------
+  HEX    6B6579303130: 76616C75655F76375F78786861736836345F736E617070795F303130
+  ASCII  k e y 0 1 0 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 0 
+  ------
+  HEX    6B6579303131: 76616C75655F76375F78786861736836345F736E617070795F303131
+  ASCII  k e y 0 1 1 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 1 
+  ------
+  HEX    6B6579303132: 76616C75655F76375F78786861736836345F736E617070795F303132
+  ASCII  k e y 0 1 2 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 2 
+  ------
+  HEX    6B6579303133: 76616C75655F76375F78786861736836345F736E617070795F303133
+  ASCII  k e y 0 1 3 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 3 
+  ------
+  HEX    6B6579303134: 76616C75655F76375F78786861736836345F736E617070795F303134
+  ASCII  k e y 0 1 4 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 4 
+  ------
+  HEX    6B6579303135: 76616C75655F76375F78786861736836345F736E617070795F303135
+  ASCII  k e y 0 1 5 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 5 
+  ------
+  HEX    6B6579303136: 76616C75655F76375F78786861736836345F736E617070795F303136
+  ASCII  k e y 0 1 6 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 6 
+  ------
+  HEX    6B6579303137: 76616C75655F76375F78786861736836345F736E617070795F303137
+  ASCII  k e y 0 1 7 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 7 
+  ------
+  HEX    6B6579303138: 76616C75655F76375F78786861736836345F736E617070795F303138
+  ASCII  k e y 0 1 8 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 8 
+  ------
+  HEX    6B6579303139: 76616C75655F76375F78786861736836345F736E617070795F303139
+  ASCII  k e y 0 1 9 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 1 9 
+  ------
+  HEX    6B6579303230: 76616C75655F76375F78786861736836345F736E617070795F303230
+  ASCII  k e y 0 2 0 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 0 
+  ------
+  HEX    6B6579303231: 76616C75655F76375F78786861736836345F736E617070795F303231
+  ASCII  k e y 0 2 1 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 1 
+  ------
+  HEX    6B6579303232: 76616C75655F76375F78786861736836345F736E617070795F303232
+  ASCII  k e y 0 2 2 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 2 
+  ------
+  HEX    6B6579303233: 76616C75655F76375F78786861736836345F736E617070795F303233
+  ASCII  k e y 0 2 3 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 3 
+  ------
+  HEX    6B6579303234: 76616C75655F76375F78786861736836345F736E617070795F303234
+  ASCII  k e y 0 2 4 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 4 
+  ------
+  HEX    6B6579303235: 76616C75655F76375F78786861736836345F736E617070795F303235
+  ASCII  k e y 0 2 5 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 5 
+  ------
+  HEX    6B6579303236: 76616C75655F76375F78786861736836345F736E617070795F303236
+  ASCII  k e y 0 2 6 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 6 
+  ------
+  HEX    6B6579303237: 76616C75655F76375F78786861736836345F736E617070795F303237
+  ASCII  k e y 0 2 7 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 7 
+  ------
+  HEX    6B6579303238: 76616C75655F76375F78786861736836345F736E617070795F303238
+  ASCII  k e y 0 2 8 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 8 
+  ------
+  HEX    6B6579303239: 76616C75655F76375F78786861736836345F736E617070795F303239
+  ASCII  k e y 0 2 9 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 2 9 
+  ------
+  HEX    6B6579303330: 76616C75655F76375F78786861736836345F736E617070795F303330
+  ASCII  k e y 0 3 0 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 0 
+  ------
+  HEX    6B6579303331: 76616C75655F76375F78786861736836345F736E617070795F303331
+  ASCII  k e y 0 3 1 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 1 
+  ------
+  HEX    6B6579303332: 76616C75655F76375F78786861736836345F736E617070795F303332
+  ASCII  k e y 0 3 2 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 2 
+  ------
+  HEX    6B6579303333: 76616C75655F76375F78786861736836345F736E617070795F303333
+  ASCII  k e y 0 3 3 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 3 
+  ------
+  HEX    6B6579303334: 76616C75655F76375F78786861736836345F736E617070795F303334
+  ASCII  k e y 0 3 4 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 4 
+  ------
+  HEX    6B6579303335: 76616C75655F76375F78786861736836345F736E617070795F303335
+  ASCII  k e y 0 3 5 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 5 
+  ------
+  HEX    6B6579303336: 76616C75655F76375F78786861736836345F736E617070795F303336
+  ASCII  k e y 0 3 6 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 6 
+  ------
+  HEX    6B6579303337: 76616C75655F76375F78786861736836345F736E617070795F303337
+  ASCII  k e y 0 3 7 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 7 
+  ------
+  HEX    6B6579303338: 76616C75655F76375F78786861736836345F736E617070795F303338
+  ASCII  k e y 0 3 8 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 8 
+  ------
+  HEX    6B6579303339: 76616C75655F76375F78786861736836345F736E617070795F303339
+  ASCII  k e y 0 3 9 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 3 9 
+  ------
+  HEX    6B6579303430: 76616C75655F76375F78786861736836345F736E617070795F303430
+  ASCII  k e y 0 4 0 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 0 
+  ------
+  HEX    6B6579303431: 76616C75655F76375F78786861736836345F736E617070795F303431
+  ASCII  k e y 0 4 1 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 1 
+  ------
+  HEX    6B6579303432: 76616C75655F76375F78786861736836345F736E617070795F303432
+  ASCII  k e y 0 4 2 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 2 
+  ------
+  HEX    6B6579303433: 76616C75655F76375F78786861736836345F736E617070795F303433
+  ASCII  k e y 0 4 3 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 3 
+  ------
+  HEX    6B6579303434: 76616C75655F76375F78786861736836345F736E617070795F303434
+  ASCII  k e y 0 4 4 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 4 
+  ------
+  HEX    6B6579303435: 76616C75655F76375F78786861736836345F736E617070795F303435
+  ASCII  k e y 0 4 5 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 5 
+  ------
+  HEX    6B6579303436: 76616C75655F76375F78786861736836345F736E617070795F303436
+  ASCII  k e y 0 4 6 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 6 
+  ------
+  HEX    6B6579303437: 76616C75655F76375F78786861736836345F736E617070795F303437
+  ASCII  k e y 0 4 7 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 7 
+  ------
+  HEX    6B6579303438: 76616C75655F76375F78786861736836345F736E617070795F303438
+  ASCII  k e y 0 4 8 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 8 
+  ------
+  HEX    6B6579303439: 76616C75655F76375F78786861736836345F736E617070795F303439
+  ASCII  k e y 0 4 9 : v a l u e _ v 7 _ x x h a s h 6 4 _ s n a p p y _ 0 4 9 
+  ------
+
+Data Block Summary:
+--------------------------------------
+  # data blocks: 1
+  min data block size: 378
+  max data block size: 378
+  avg data block size: 378.000000

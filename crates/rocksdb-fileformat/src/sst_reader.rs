@@ -72,6 +72,8 @@ impl SstReader {
 
 #[cfg(test)]
 mod tests {
+    use crate::types::ChecksumType;
+
     use super::*;
     use std::path::PathBuf;
 
@@ -91,10 +93,11 @@ mod tests {
     }
 
     #[test]
-    fn test_format_v5() -> Result<()> {
+    fn test_format_v5_crc32_snappy() -> Result<()> {
         let path = fixture_path(5, "crc32c", "snappy");
         let reader = SstReader::open(&path)?;
 
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::CRC32c);
         assert_eq!(reader.get_footer().format_version, 5);
 
         // Verify footer has exact block handle values from actual file parsing
@@ -125,17 +128,87 @@ mod tests {
     }
 
     #[test]
-    fn test_format_v6() -> Result<()> {
-        let path = fixture_path(6, "crc32c", "snappy");
+    fn test_format_v5_xxh64_snappy() -> Result<()> {
+        let path = fixture_path(5, "xxhash64", "snappy");
         let reader = SstReader::open(&path)?;
 
-        assert_eq!(reader.get_footer().format_version, 6);
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::Hash64);
+        assert_eq!(reader.get_footer().format_version, 5);
+
+        // Verify footer has exact block handle values from actual file parsing
+        // Values specific to xxhash64 checksum type (differs from crc32c by 1 byte offset)
+        assert_eq!(
+            reader.get_footer().metaindex_handle.offset,
+            1471,
+            "First parsed handle (metaindex) offset should be 1471"
+        );
+        assert_eq!(
+            reader.get_footer().metaindex_handle.size,
+            80,
+            "First parsed handle (metaindex) size should be 80"
+        );
+        assert_eq!(
+            reader.get_footer().index_handle.offset,
+            457,
+            "Second parsed handle (index) offset should be 457"
+        );
+        assert_eq!(
+            reader.get_footer().index_handle.size,
+            19,
+            "Second parsed handle (index) size should be 19"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_format_v7_crc32_snappy() -> Result<()> {
+        let path = fixture_path(7, "crc32c", "snappy");
+        let reader = SstReader::open(&path)?;
+
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::CRC32c);
+        assert_eq!(reader.get_footer().format_version, 7);
 
         // Verify footer has exact block handle values from SST dump tool
         assert_eq!(
             reader.get_footer().metaindex_handle.offset,
-            1470,
-            "Metaindex offset should be 1470 (from SST dump)"
+            1477,
+            "Metaindex offset should be 1477 (from SST dump)"
+        );
+        assert_eq!(
+            reader.get_footer().metaindex_handle.size,
+            103,
+            "Metaindex size should be 103 (from SST dump)"
+        );
+        // v7 has special case where index handle is 0 according to SST dump
+        assert_eq!(
+            reader.get_footer().index_handle.offset,
+            0,
+            "Index offset should be 0 (from SST dump)"
+        );
+        assert_eq!(
+            reader.get_footer().index_handle.size,
+            0,
+            "Index size should be 0 (from SST dump)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_format_v6_xxh64_snappy() -> Result<()> {
+        let path = fixture_path(6, "xxhash64", "snappy");
+        let reader = SstReader::open(&path)?;
+
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::Hash64);
+        assert_eq!(reader.get_footer().format_version, 6);
+
+        // Verify footer has exact block handle values from SST dump tool
+        // Values specific to xxhash64 checksum type (differs from crc32c by 1 byte offset)
+        assert_eq!(
+            reader.get_footer().metaindex_handle.offset,
+            1471,
+            "Metaindex offset should be 1471 (from SST dump)"
         );
         assert_eq!(
             reader.get_footer().metaindex_handle.size,
@@ -158,10 +231,11 @@ mod tests {
     }
 
     #[test]
-    fn test_format_v7() -> Result<()> {
-        let path = fixture_path(7, "crc32c", "snappy");
+    fn test_format_v7_xxhash_snappy() -> Result<()> {
+        let path = fixture_path(7, "xxhash", "snappy");
         let reader = SstReader::open(&path)?;
 
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::Hash);
         assert_eq!(reader.get_footer().format_version, 7);
 
         // Verify footer has exact block handle values from SST dump tool
@@ -169,6 +243,41 @@ mod tests {
             reader.get_footer().metaindex_handle.offset,
             1477,
             "Metaindex offset should be 1477 (from SST dump)"
+        );
+        assert_eq!(
+            reader.get_footer().metaindex_handle.size,
+            103,
+            "Metaindex size should be 103 (from SST dump)"
+        );
+        // v7 has special case where index handle is 0 according to SST dump
+        assert_eq!(
+            reader.get_footer().index_handle.offset,
+            0,
+            "Index offset should be 0 (from SST dump)"
+        );
+        assert_eq!(
+            reader.get_footer().index_handle.size,
+            0,
+            "Index size should be 0 (from SST dump)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_format_v7_xxh64_snappy() -> Result<()> {
+        let path = fixture_path(7, "xxhash64", "snappy");
+        let reader = SstReader::open(&path)?;
+
+        assert_eq!(reader.get_footer().checksum_type, ChecksumType::Hash64);
+        assert_eq!(reader.get_footer().format_version, 7);
+
+        // Verify footer has exact block handle values from SST dump tool
+        // Values specific to xxhash64 checksum type (differs from crc32c by 1 byte offset)
+        assert_eq!(
+            reader.get_footer().metaindex_handle.offset,
+            1478,
+            "Metaindex offset should be 1478 (from SST dump)"
         );
         assert_eq!(
             reader.get_footer().metaindex_handle.size,

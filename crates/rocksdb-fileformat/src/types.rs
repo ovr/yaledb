@@ -8,12 +8,15 @@ pub const MAX_BLOCK_HANDLE_ENCODED_LENGTH: usize = 20;
 pub const DEFAULT_BLOCK_SIZE: usize = 4096;
 pub const DEFAULT_BLOCK_RESTART_INTERVAL: usize = 16;
 
+/// https://github.com/facebook/rocksdb/blob/v10.5.1/include/rocksdb/table.h#L55
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChecksumType {
     None = 0,
     CRC32c = 1,
-    XXH64 = 2,
-    XXH3 = 3,
+    Hash = 2,
+    Hash64 = 3,
+    // Supported since RocksDB 6.27
+    XXH3 = 4,
 }
 
 impl TryFrom<u8> for ChecksumType {
@@ -23,8 +26,9 @@ impl TryFrom<u8> for ChecksumType {
         match value {
             0 => Ok(ChecksumType::None),
             1 => Ok(ChecksumType::CRC32c),
-            2 => Ok(ChecksumType::XXH64),
-            3 => Ok(ChecksumType::XXH3),
+            2 => Ok(ChecksumType::Hash),
+            3 => Ok(ChecksumType::Hash64),
+            4 => Ok(ChecksumType::XXH3),
             _ => Err(crate::error::Error::UnsupportedChecksumType(value)),
         }
     }
