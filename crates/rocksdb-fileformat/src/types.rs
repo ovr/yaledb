@@ -72,6 +72,26 @@ impl ChecksumType {
     }
 }
 
+/// Helper function to split a 64-bit value into lower 32 bits
+fn lower32_of64(v: u64) -> u32 {
+    v as u32
+}
+
+/// Helper function to split a 64-bit value into upper 32 bits  
+fn upper32_of64(v: u64) -> u32 {
+    (v >> 32) as u32
+}
+
+/// Calculate checksum modifier for context based on RocksDB implementation
+/// This provides additional entropy based on the file offset to prevent block reuse attacks
+pub fn checksum_modifier_for_context(base_context_checksum: u32, offset: u64) -> u32 {
+    if base_context_checksum == 0 {
+        0
+    } else {
+        base_context_checksum ^ (lower32_of64(offset).wrapping_add(upper32_of64(offset)))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionType {
     None = 0,
@@ -161,6 +181,26 @@ impl Default for ReadOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_checksum_modifier_for_context() {
+        // Test with zero base context checksum - should return 0
+        assert_eq!(checksum_modifier_for_context(0, 12345), 0);
+
+        // Test with non-zero base context checksum
+        let base = 0x12345678u32;
+        let offset = 0x9ABCDEF012345678u64;
+
+        // Should be base XOR (lower32(offset) + upper32(offset))
+        let expected = base ^ (0x12345678u32.wrapping_add(0x9ABCDEF0u32));
+        assert_eq!(checksum_modifier_for_context(base, offset), expected);
+
+        // Test edge case with wraparound
+        let base = 0xFFFFFFFFu32;
+        let offset = 0xFFFFFFFFFFFFFFFFu64;
+        let expected = base ^ (0xFFFFFFFFu32.wrapping_add(0xFFFFFFFFu32));
+        assert_eq!(checksum_modifier_for_context(base, offset), expected);
+    }
 
     #[test]
     fn test_calculate_checksum_against_rocksdb() {

@@ -123,6 +123,8 @@ mod tests {
             19,
             "Second parsed handle (index) size should be 19"
         );
+        // Verify checksum field is empty
+        assert!(reader.get_footer().base_context_checksum.is_none());
 
         Ok(())
     }
@@ -157,6 +159,8 @@ mod tests {
             19,
             "Second parsed handle (index) size should be 19"
         );
+        // Verify checksum field is empty
+        assert!(reader.get_footer().base_context_checksum.is_none());
 
         Ok(())
     }
@@ -191,6 +195,8 @@ mod tests {
             0,
             "Index size should be 0 (from SST dump)"
         );
+        // Verify checksum field is populated
+        assert!(reader.get_footer().base_context_checksum.is_some());
 
         Ok(())
     }
@@ -226,6 +232,8 @@ mod tests {
             0,
             "Index size should be 0 (from SST dump)"
         );
+        // Verify checksum field is populated
+        assert!(reader.get_footer().base_context_checksum.is_some());
 
         Ok(())
     }
@@ -260,6 +268,8 @@ mod tests {
             0,
             "Index size should be 0 (from SST dump)"
         );
+        // Verify checksum field is populated
+        assert!(reader.get_footer().base_context_checksum.is_some());
 
         Ok(())
     }
@@ -295,6 +305,8 @@ mod tests {
             0,
             "Index size should be 0 (from SST dump)"
         );
+        // Verify checksum field is populated
+        assert!(reader.get_footer().base_context_checksum.is_some());
 
         Ok(())
     }

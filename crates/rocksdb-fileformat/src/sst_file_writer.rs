@@ -118,6 +118,7 @@ impl SstFileWriter {
             metaindex_handle,
             index_handle,
             format_version: self.options.format_version as u32,
+            base_context_checksum: None,
         };
         let footer_data = footer.encode_to_bytes()?;
 

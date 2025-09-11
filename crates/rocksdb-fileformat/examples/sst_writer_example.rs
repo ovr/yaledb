@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Now try to read it back using SstReader to verify it's properly formatted
     println!("Verifying SST file format...");
 
-    let mut reader = SstReader::open(&sst_path)?;
+    let reader = SstReader::open(&sst_path)?;
 
     // Check basic file properties
     println!("File size: {}", reader.file_size());

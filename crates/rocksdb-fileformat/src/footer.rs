@@ -2,7 +2,10 @@ use byteorder::{ByteOrder, LittleEndian};
 
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
-use crate::types::{ChecksumType, FOOTER_SIZE, LEGACY_MAGIC_NUMBER, ROCKSDB_MAGIC_NUMBER};
+use crate::types::{
+    ChecksumType, FOOTER_SIZE, LEGACY_MAGIC_NUMBER, ROCKSDB_MAGIC_NUMBER,
+    checksum_modifier_for_context,
+};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11,6 +14,11 @@ pub struct Footer {
     pub metaindex_handle: BlockHandle,
     pub index_handle: BlockHandle,
     pub format_version: u32,
+    /// Base context checksum used as entropy source for footer checksum calculation.
+    /// Only present in format version 6 and higher. This value is combined with the
+    /// footer's file offset to create a unique checksum modifier, preventing block
+    /// reuse attacks by ensuring checksums are position-dependent.
+    pub base_context_checksum: Option<u32>,
 }
 
 struct ReverseCursor<'a> {
@@ -169,6 +177,7 @@ impl Footer {
                 metaindex_handle,
                 index_handle,
                 format_version: 0,
+                base_context_checksum: None,
             });
         }
 
@@ -213,13 +222,13 @@ impl Footer {
             // Index handle is null for v6+
             let index_handle = BlockHandle::new(0, 0);
 
-            let _base_context_checksum = cursor.read_i32().map_err(|err| {
+            let base_context_checksum = cursor.read_i32().map_err(|err| {
                 Error::DataCorruption(format!("Unable to read base context checksum: {:?}", err))
-            })?;
+            })? as u32;
 
-            let _stored_checksum = cursor.read_i32().map_err(|err| {
+            let stored_checksum = cursor.read_i32().map_err(|err| {
                 Error::DataCorruption(format!("Unable to read stored checksum: {:?}", err))
-            })?;
+            })? as u32;
 
             {
                 let mut magic_bytes = [0u8; 4];
@@ -238,11 +247,30 @@ impl Footer {
 
             let checksum_type = ChecksumType::try_from(cursor.read_u8()?)?;
 
+            // Perform checksum verification
+            let mut footer_copy = data.to_vec();
+            // Zero out the checksum field (bytes 5-8 from the start)
+            footer_copy[5..9].fill(0);
+
+            let computed_checksum = checksum_type.calculate(&footer_copy);
+            let modified_checksum = computed_checksum.wrapping_add(checksum_modifier_for_context(
+                base_context_checksum,
+                input_offset,
+            ));
+
+            if modified_checksum != stored_checksum {
+                return Err(Error::DataCorruption(format!(
+                    "Footer checksum mismatch at offset {}: expected {:#x}, computed {:#x}",
+                    input_offset, stored_checksum, modified_checksum
+                )));
+            }
+
             Ok(Footer {
                 checksum_type,
                 metaindex_handle,
                 index_handle,
                 format_version,
+                base_context_checksum: Some(base_context_checksum),
             })
         } else {
             let version_start = data.len() - 12;
@@ -271,6 +299,7 @@ impl Footer {
                 metaindex_handle,
                 index_handle,
                 format_version,
+                base_context_checksum: None,
             })
         }
     }
@@ -316,6 +345,7 @@ mod tests {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 5,
+            base_context_checksum: None,
         };
 
         let encoded = original.encode_to_bytes()?;
@@ -334,6 +364,7 @@ mod tests {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 5,
+            base_context_checksum: None,
         };
 
         let encoded = original.encode_to_bytes()?;
@@ -352,6 +383,7 @@ mod tests {
             metaindex_handle: BlockHandle::new(1000, 500),
             index_handle: BlockHandle::new(1500, 200),
             format_version: 5,
+            base_context_checksum: None,
         };
 
         let mut encoded = footer.encode_to_bytes()?;
