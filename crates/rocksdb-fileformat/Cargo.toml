@@ -1,7 +1,9 @@
 [package]
 name = "rocksdb-fileformat"
+version = "0.1.0"
 edition = "2024"
 authors = ["ovr"]
+license = "Apache-2.0"
 description = "RocksDB SST file format reader"
 
 [dependencies]

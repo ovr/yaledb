@@ -1,3 +1,6 @@
+// Copyright 2024 YaleDB Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 pub mod block_builder;
 pub mod block_handle;
 pub mod compression;

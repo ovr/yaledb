@@ -1,3 +1,6 @@
+// Copyright 2024 YaleDB Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 use byteorder::{ByteOrder, LittleEndian};
 
 use crate::block_handle::BlockHandle;

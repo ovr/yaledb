@@ -1,3 +1,6 @@
+// Copyright 2024 YaleDB Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 pub const ROCKSDB_MAGIC_NUMBER: u64 = 0x88e241b785f4cff7;
 pub const LEGACY_MAGIC_NUMBER: u64 = 0xdb4775248b80fb57;
 
