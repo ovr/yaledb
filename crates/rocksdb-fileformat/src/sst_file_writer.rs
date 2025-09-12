@@ -120,7 +120,10 @@ impl SstFileWriter {
             format_version: self.options.format_version as u32,
             base_context_checksum: None,
         };
-        let footer_data = footer.encode_to_bytes()?;
+        // Calculate where the footer will be written (after index and metaindex blocks)
+        let footer_offset =
+            self.offset + index_block_data.len() as u64 + metaindex_data.len() as u64;
+        let footer_data = footer.encode_to_bytes(footer_offset)?;
 
         // Now write everything
         let writer = self.writer.as_mut().unwrap();

@@ -304,77 +304,70 @@ impl Footer {
         }
     }
 
-    pub fn encode_to_bytes(&self) -> Result<Vec<u8>> {
+    pub fn encode_to_bytes(&self, offset: u64) -> Result<Vec<u8>> {
         if self.format_version >= 6 {
-            // v6+ format - not implemented for encoding yet
-            return Err(Error::UnsupportedOperation(
-                "Encoding v6+ footer not supported".to_string(),
-            ));
+            // Reverse order, see ReverseCuros
+            let mut data = Vec::with_capacity(53);
+
+            // 1. checksum type (1 byte) - first byte, read last by ReverseCursor
+            data.push(self.checksum_type as u8);
+            // 2. extended magic bytes (4 bytes)
+            data.extend(&[0x3e, 0x00, 0x7a, 0x00]);
+
+            // 3. footer checksum (4 bytes as i32), initially zero
+            data.extend(&[0u8; 4]);
+
+            // 4. base context checksum (4 bytes as i32)
+            let base_context_checksum = self.base_context_checksum.unwrap_or(0);
+            data.extend(&(base_context_checksum as i32).to_le_bytes());
+            // 5. metaindex size (4 bytes as i32)
+            data.extend(&(self.metaindex_handle.size as i32).to_le_bytes());
+
+            // 6. checked reserved (8 bytes, must be zero)
+            data.extend(&[0u8; 8]);
+            // 7. unchecked reserved padding (16 bytes)
+            data.extend(&[0u8; 16]);
+
+            data.extend(&self.format_version.to_le_bytes());
+            data.extend(&ROCKSDB_MAGIC_NUMBER.to_le_bytes());
+
+            // Calculate checksum with the provided offset
+            let computed_checksum = self.checksum_type.calculate(&data);
+            let modified_checksum = computed_checksum
+                .wrapping_add(checksum_modifier_for_context(base_context_checksum, offset));
+
+            // Write the checksum to bytes 5-8 (where the checksum field is)
+            data[5..9].copy_from_slice(&(modified_checksum as i32).to_le_bytes());
+
+            Ok(data)
+        } else {
+            // v1-v5 format (49 bytes)
+            let mut data = Vec::with_capacity(FOOTER_SIZE);
+
+            // Write checksum type first for v1+
+            data.push(self.checksum_type as u8);
+
+            // Write block handles
+            self.metaindex_handle.encode_to(&mut data)?;
+            self.index_handle.encode_to(&mut data)?;
+
+            let used_bytes = data.len();
+
+            // Format: checksum_type(1) + block_handles + padding + format_version(4) + magic(8)
+            let padding_size = FOOTER_SIZE - used_bytes - 12; // 4 bytes for format version + 8 for magic
+            data.extend(vec![0u8; padding_size]);
+            data.extend(&self.format_version.to_le_bytes());
+            data.extend(&ROCKSDB_MAGIC_NUMBER.to_le_bytes());
+
+            assert_eq!(data.len(), FOOTER_SIZE);
+            Ok(data)
         }
-
-        let mut data = Vec::with_capacity(FOOTER_SIZE);
-
-        // Write checksum type first for v1+
-        data.push(self.checksum_type as u8);
-
-        // Write block handles
-        self.metaindex_handle.encode_to(&mut data)?;
-        self.index_handle.encode_to(&mut data)?;
-
-        let used_bytes = data.len();
-
-        // Format: checksum_type(1) + block_handles + padding + format_version(4) + magic(8)
-        let padding_size = FOOTER_SIZE - used_bytes - 12; // 4 bytes for format version + 8 for magic
-        data.extend(vec![0u8; padding_size]);
-        data.extend(&self.format_version.to_le_bytes());
-        data.extend(&ROCKSDB_MAGIC_NUMBER.to_le_bytes());
-
-        assert_eq!(data.len(), FOOTER_SIZE);
-        Ok(data)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_footer_roundtrip() -> Result<()> {
-        let original = Footer {
-            checksum_type: ChecksumType::CRC32c,
-            metaindex_handle: BlockHandle::new(1000, 500),
-            index_handle: BlockHandle::new(1500, 200),
-            format_version: 5,
-            base_context_checksum: None,
-        };
-
-        let encoded = original.encode_to_bytes()?;
-        assert_eq!(encoded.len(), FOOTER_SIZE);
-
-        let footer_offset = 1000; // Example footer offset
-        let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
-        assert_eq!(decoded, original);
-        Ok(())
-    }
-
-    #[test]
-    fn test_footer_roundtrip_with_format_version() -> Result<()> {
-        let original = Footer {
-            checksum_type: ChecksumType::CRC32c,
-            metaindex_handle: BlockHandle::new(1000, 500),
-            index_handle: BlockHandle::new(1500, 200),
-            format_version: 5,
-            base_context_checksum: None,
-        };
-
-        let encoded = original.encode_to_bytes()?;
-        assert_eq!(encoded.len(), FOOTER_SIZE);
-
-        let footer_offset = 2000; // Example footer offset
-        let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
-        assert_eq!(original, decoded);
-        Ok(())
-    }
 
     #[test]
     fn test_footer_magic_number_validation() -> Result<()> {
@@ -386,7 +379,7 @@ mod tests {
             base_context_checksum: None,
         };
 
-        let mut encoded = footer.encode_to_bytes()?;
+        let mut encoded = footer.encode_to_bytes(1500)?; // Using footer offset from test
 
         encoded[FOOTER_SIZE - 1] = 0xFF;
 
@@ -403,6 +396,198 @@ mod tests {
         let result = Footer::decode_from_bytes(&data, footer_offset);
         // Any size < 8 should fail due to magic number check
         assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_roundtrip_v5() -> Result<()> {
+        let original = Footer {
+            checksum_type: ChecksumType::CRC32c,
+            metaindex_handle: BlockHandle::new(1000, 500),
+            index_handle: BlockHandle::new(1500, 200),
+            format_version: 5,
+            base_context_checksum: None,
+        };
+
+        let footer_offset = 1000; // Example footer offset
+        let encoded = original.encode_to_bytes(footer_offset)?;
+        assert_eq!(encoded.len(), FOOTER_SIZE);
+        let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
+
+        // Compare all fields to ensure proper roundtrip encoding/decoding
+        assert_eq!(decoded.checksum_type, original.checksum_type);
+        assert_eq!(
+            decoded.metaindex_handle.size,
+            original.metaindex_handle.size
+        );
+        assert_eq!(
+            decoded.metaindex_handle.offset,
+            original.metaindex_handle.offset
+        );
+        assert_eq!(decoded.index_handle.size, original.index_handle.size);
+        assert_eq!(decoded.index_handle.offset, original.index_handle.offset);
+        assert_eq!(decoded.format_version, original.format_version);
+        assert_eq!(
+            decoded.base_context_checksum,
+            original.base_context_checksum
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_v6_roundtrip() -> Result<()> {
+        // For v6+, the metaindex offset is calculated from (input_offset - 5) - metaindex_size
+        // So we need to use a footer offset that's large enough
+        let input_offset = 100000; // Large value to avoid overflow
+        let metaindex_size = 500;
+        let expected_metaindex_offset = (input_offset - 5) - metaindex_size; // adjustment = 5
+
+        let original = Footer {
+            checksum_type: ChecksumType::CRC32c,
+            metaindex_handle: BlockHandle::new(expected_metaindex_offset, metaindex_size),
+            index_handle: BlockHandle::new(0, 0), // Null for v6+
+            format_version: 6,
+            base_context_checksum: Some(0x12345678),
+        };
+
+        let encoded = original.encode_to_bytes(input_offset)?;
+        assert_eq!(encoded.len(), 53); // v6+ footer size
+
+        let decoded = Footer::decode_from_bytes(&encoded, input_offset)?;
+
+        // Compare all fields except possibly checksum calculation differences due to offset
+        assert_eq!(decoded.checksum_type, original.checksum_type);
+        assert_eq!(
+            decoded.metaindex_handle.size,
+            original.metaindex_handle.size
+        );
+        assert_eq!(decoded.metaindex_handle.offset, expected_metaindex_offset);
+        assert_eq!(decoded.index_handle, original.index_handle);
+        assert_eq!(decoded.format_version, original.format_version);
+        assert_eq!(
+            decoded.base_context_checksum,
+            original.base_context_checksum
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_v6_with_different_checksum_types() -> Result<()> {
+        let checksum_types = [
+            ChecksumType::None,
+            ChecksumType::CRC32c,
+            ChecksumType::Hash,
+            ChecksumType::Hash64,
+            ChecksumType::XXH3,
+        ];
+
+        for checksum_type in checksum_types {
+            let input_offset = 50000; // Large value to avoid overflow
+            let metaindex_size = 1024;
+
+            let footer = Footer {
+                checksum_type,
+                metaindex_handle: BlockHandle::new(
+                    (input_offset - 5) - metaindex_size,
+                    metaindex_size,
+                ),
+                index_handle: BlockHandle::new(0, 0),
+                format_version: 6,
+                base_context_checksum: Some(0xABCDEF12),
+            };
+
+            let encoded = footer.encode_to_bytes(input_offset)?;
+            assert_eq!(encoded.len(), 53);
+
+            let decoded = Footer::decode_from_bytes(&encoded, input_offset)?;
+
+            assert_eq!(decoded.checksum_type, checksum_type);
+            assert_eq!(decoded.format_version, 6);
+            assert_eq!(decoded.base_context_checksum, Some(0xABCDEF12));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_v7_roundtrip() -> Result<()> {
+        let input_offset = 75000; // Large value to avoid overflow
+        let metaindex_size = 2048;
+
+        let original = Footer {
+            checksum_type: ChecksumType::XXH3,
+            metaindex_handle: BlockHandle::new((input_offset - 5) - metaindex_size, metaindex_size),
+            index_handle: BlockHandle::new(0, 0), // Null for v6+
+            format_version: 7,
+            base_context_checksum: Some(0x87654321),
+        };
+
+        let encoded = original.encode_to_bytes(input_offset)?;
+        assert_eq!(encoded.len(), 53); // v7 also uses 53 bytes
+
+        let decoded = Footer::decode_from_bytes(&encoded, input_offset)?;
+
+        assert_eq!(decoded.checksum_type, original.checksum_type);
+        assert_eq!(
+            decoded.metaindex_handle.size,
+            original.metaindex_handle.size
+        );
+        assert_eq!(
+            decoded.metaindex_handle.offset,
+            original.metaindex_handle.offset
+        );
+        assert_eq!(decoded.index_handle, original.index_handle);
+        assert_eq!(decoded.format_version, original.format_version);
+        assert_eq!(
+            decoded.base_context_checksum,
+            original.base_context_checksum
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_v6_no_base_context_checksum() -> Result<()> {
+        // Test with None base context checksum - should default to 0
+        let input_offset = 25000; // Large value to avoid overflow
+        let metaindex_size = 512;
+
+        let footer = Footer {
+            checksum_type: ChecksumType::CRC32c,
+            metaindex_handle: BlockHandle::new((input_offset - 5) - metaindex_size, metaindex_size),
+            index_handle: BlockHandle::new(0, 0),
+            format_version: 6,
+            base_context_checksum: None,
+        };
+
+        let encoded = footer.encode_to_bytes(input_offset)?;
+        assert_eq!(encoded.len(), 53);
+
+        let decoded = Footer::decode_from_bytes(&encoded, input_offset)?;
+
+        // Since encoding uses 0 when None, and decoding always creates Some(...),
+        // we expect Some(0) after roundtrip
+        assert_eq!(decoded.base_context_checksum, Some(0));
+        assert_eq!(decoded.format_version, 6);
+        Ok(())
+    }
+
+    #[test]
+    fn test_footer_v6_encoding_with_offset() -> Result<()> {
+        // Test that encoding with different offsets produces different checksums
+        let footer = Footer {
+            checksum_type: ChecksumType::CRC32c,
+            metaindex_handle: BlockHandle::new(0, 256),
+            index_handle: BlockHandle::new(0, 0),
+            format_version: 6,
+            base_context_checksum: Some(0x11223344),
+        };
+
+        let encoded_offset_0 = footer.encode_to_bytes(0)?;
+        let encoded_offset_1000 = footer.encode_to_bytes(1000)?;
+
+        // Different offsets should produce different encoded results (due to checksum)
+        assert_ne!(encoded_offset_0, encoded_offset_1000);
+        assert_eq!(encoded_offset_0.len(), 53);
+        assert_eq!(encoded_offset_1000.len(), 53);
         Ok(())
     }
 }
