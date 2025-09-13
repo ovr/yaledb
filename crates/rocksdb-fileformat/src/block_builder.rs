@@ -4,23 +4,65 @@ use crate::error::Result;
 use crate::types::CompressionType;
 use byteorder::{LittleEndian, WriteBytesExt};
 
+/// Configuration options for DataBlockBuilder
+#[derive(Debug, Clone)]
+pub struct DataBlockBuilderOptions {
+    /// Number of entries between restart points for prefix compression
+    pub restart_interval: usize,
+    /// Target block size in bytes (for future use)
+    pub block_size_target: Option<usize>,
+    /// Whether to enable checksum verification (for future use)
+    pub enable_checksums: bool,
+}
+
+impl Default for DataBlockBuilderOptions {
+    fn default() -> Self {
+        Self {
+            restart_interval: 16,
+            block_size_target: None,
+            enable_checksums: false,
+        }
+    }
+}
+
+impl DataBlockBuilderOptions {
+    /// Set the restart interval
+    pub fn with_restart_interval(mut self, restart_interval: usize) -> Self {
+        self.restart_interval = restart_interval;
+        self
+    }
+
+    /// Set the target block size
+    pub fn with_block_size_target(mut self, size: usize) -> Self {
+        self.block_size_target = Some(size);
+        self
+    }
+
+    /// Enable checksum verification
+    pub fn with_checksums(mut self, enable: bool) -> Self {
+        self.enable_checksums = enable;
+        self
+    }
+}
+
 /// Builder for data blocks with prefix compression and restart points
 pub struct DataBlockBuilder {
     buffer: Vec<u8>,
     restarts: Vec<u32>,
     counter: usize,
-    restart_interval: usize,
+    options: DataBlockBuilderOptions,
     last_key: Vec<u8>,
     finished: bool,
 }
 
 impl DataBlockBuilder {
-    pub fn new(restart_interval: usize) -> Self {
+    /// Create a new DataBlockBuilder with the specified options
+    pub fn new(options: DataBlockBuilderOptions) -> Self {
         let mut builder = DataBlockBuilder {
             buffer: Vec::new(),
             restarts: Vec::new(),
             counter: 0,
-            restart_interval,
+            options,
             last_key: Vec::new(),
             finished: false,
         };
@@ -32,11 +74,11 @@ impl DataBlockBuilder {
 
     pub fn add(&mut self, key: &[u8], value: &[u8]) {
         assert!(!self.finished);
-        assert!(self.counter <= self.restart_interval);
+        assert!(self.counter <= self.options.restart_interval);
         assert!(self.buffer.len() < u32::MAX as usize);
 
         let mut shared = 0;
-        if self.counter < self.restart_interval {
+        if self.counter < self.options.restart_interval {
             // Find shared prefix with last key
             let min_len = std::cmp::min(self.last_key.len(), key.len());
             while shared < min_len && self.last_key[shared] == key[shared] {
@@ -83,17 +125,27 @@ impl DataBlockBuilder {
             .write_u32::<LittleEndian>(self.restarts.len() as u32)
             .unwrap();
 
-        // Add block trailer: compression type (1 byte) + checksum (4 bytes)
-        let mut block_data = self.buffer.clone();
-        block_data.push(compression_type as u8);
+        // First, create the raw block data with the 5-byte trailer
+        let mut raw_block = self.buffer.clone();
+        raw_block.push(compression_type as u8);
+        raw_block.write_u32::<LittleEndian>(0).unwrap(); // dummy checksum
 
-        // Add dummy checksum (0 for now)
-        block_data.write_u32::<LittleEndian>(0).unwrap();
+        // For uncompressed blocks, return as-is
+        // For compressed blocks, compress only the data without the trailer,
+        // then add the trailer after compression
+        if compression_type == CompressionType::None {
+            Ok(raw_block)
+        } else {
+            // Compress the data (without the trailer)
+            let compressed_data = compress(&self.buffer, compression_type)?;
 
-        // Compress if needed
-        let compressed_data = compress(&block_data, compression_type)?;
+            // Add the trailer after compression
+            let mut result = compressed_data;
+            result.push(compression_type as u8);
+            result.write_u32::<LittleEndian>(0).unwrap(); // dummy checksum
 
-        Ok(compressed_data)
+            Ok(result)
+        }
     }
 
     pub fn reset(&mut self) {
@@ -247,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_simple() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(16);
+        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
 
         builder.add(b"key1", b"value1");
         builder.add(b"key2", b"value2");
@@ -259,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_with_compression() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(16);
+        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
 
         // Add multiple entries to test compression
         for i in 0..10 {
@@ -296,14 +348,14 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_empty() -> Result<()> {
-        let builder = DataBlockBuilder::new(16);
+        let builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
         assert!(builder.empty());
         Ok(())
     }
 
     #[test]
     fn test_data_block_builder_reset() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(16);
+        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
         builder.add(b"key1", b"value1");
         assert!(!builder.empty());
 

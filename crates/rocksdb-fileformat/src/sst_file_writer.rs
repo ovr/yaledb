@@ -1,4 +1,4 @@
-use crate::block_builder::{DataBlockBuilder, IndexBlockBuilder};
+use crate::block_builder::{DataBlockBuilder, DataBlockBuilderOptions, IndexBlockBuilder};
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
@@ -35,7 +35,9 @@ impl SstFileWriter {
         SstFileWriter {
             options: opts.clone(),
             writer: None,
-            data_block_builder: DataBlockBuilder::new(opts.block_restart_interval),
+            data_block_builder: DataBlockBuilder::new(
+                DataBlockBuilderOptions::default().with_restart_interval(opts.block_restart_interval)
+            ),
             index_block_builder: IndexBlockBuilder::new(opts.block_restart_interval),
             offset: 0,
             num_entries: 0,
