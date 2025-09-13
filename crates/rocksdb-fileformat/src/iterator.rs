@@ -1,4 +1,3 @@
-use crate::data_block::DataBlockReader;
 use crate::error::Result;
 use crate::index_block::IndexBlock;
 use crate::sst_reader::SstReader;

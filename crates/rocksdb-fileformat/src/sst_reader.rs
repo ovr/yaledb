@@ -1,5 +1,5 @@
 use crate::block_handle::BlockHandle;
-use crate::data_block::{DataBlock, DataBlockReader};
+use crate::data_block::DataBlock;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
 use crate::types::CompressionType;
@@ -58,15 +58,6 @@ impl SstReader {
     ) -> Result<DataBlock> {
         let block_data = self.read_block(handle)?;
         DataBlock::new(&block_data, compression_type)
-    }
-
-    pub fn read_data_block_reader(
-        &mut self,
-        handle: BlockHandle,
-        compression_type: CompressionType,
-    ) -> Result<DataBlockReader> {
-        let block_data = self.read_block(handle)?;
-        DataBlockReader::new(&block_data, compression_type)
     }
 }
 
