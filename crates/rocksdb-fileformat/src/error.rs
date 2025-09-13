@@ -11,7 +11,7 @@ pub enum Error {
     #[error("Invalid magic number: expected 0x88e241b785f4cff7, got {0:#x}")]
     InvalidMagicNumber(u64),
 
-    #[error("Invalid footer size: expected {}, got {}", crate::types::FOOTER_SIZE, .0)]
+    #[error("Invalid footer size: expected {}, got {}", crate::types::ROCKSDB_FOOTER_SIZE, .0)]
     InvalidFooterSize(usize),
 
     #[error("Invalid block handle: {0}")]
@@ -52,7 +52,7 @@ pub enum Error {
 
     #[error(
         "File too small: expected at least {} bytes",
-        crate::types::FOOTER_SIZE
+        crate::types::ROCKSDB_FOOTER_SIZE
     )]
     FileTooSmall,
 

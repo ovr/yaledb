@@ -1,4 +1,6 @@
-use rocksdb_fileformat::{CompressionType, FormatVersion, SstFileWriter, SstReader, WriteOptions};
+use rocksdb_fileformat::{
+    ChecksumType, CompressionType, FormatVersion, SstFileWriter, SstReader, WriteOptions,
+};
 use tempfile::tempdir;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,6 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         block_size: 4096,
         block_restart_interval: 16,
         format_version: FormatVersion::V5,
+        checksum_type: ChecksumType::CRC32c,
     };
 
     // Create and use the writer

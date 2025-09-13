@@ -2,7 +2,7 @@ use crate::block_builder::{DataBlockBuilder, DataBlockBuilderOptions, IndexBlock
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
-use crate::types::{ChecksumType, CompressionType, WriteOptions};
+use crate::types::{CompressionType, WriteOptions};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -36,7 +36,8 @@ impl SstFileWriter {
             options: opts.clone(),
             writer: None,
             data_block_builder: DataBlockBuilder::new(
-                DataBlockBuilderOptions::default().with_restart_interval(opts.block_restart_interval)
+                DataBlockBuilderOptions::default()
+                    .with_restart_interval(opts.block_restart_interval),
             ),
             index_block_builder: IndexBlockBuilder::new(opts.block_restart_interval),
             offset: 0,
@@ -116,7 +117,7 @@ impl SstFileWriter {
         };
 
         let footer = Footer {
-            checksum_type: ChecksumType::CRC32c,
+            checksum_type: self.options.checksum_type,
             metaindex_handle,
             index_handle,
             format_version: self.options.format_version as u32,
@@ -258,7 +259,7 @@ mod tests {
     use super::*;
     use crate::error::Error;
     use crate::sst_reader::SstReader;
-    use crate::types::{CompressionType, FormatVersion};
+    use crate::types::{ChecksumType, CompressionType, FormatVersion};
     use tempfile::tempdir;
 
     #[test]
@@ -280,6 +281,7 @@ mod tests {
             block_size: 4096,
             block_restart_interval: 16,
             format_version: FormatVersion::V5,
+            checksum_type: ChecksumType::CRC32c,
         };
 
         // Write data
@@ -294,7 +296,11 @@ mod tests {
 
         // Read data back
         let reader = SstReader::open(&path)?;
-        assert!(reader.get_footer().index_handle.size > 0);
+
+        let footer = reader.get_footer();
+        assert!(footer.index_handle.size > 0);
+        assert_eq!(footer.checksum_type, ChecksumType::CRC32c);
+
         Ok(())
     }
 
@@ -346,6 +352,7 @@ mod tests {
             block_size: 1024, // Small block size to ensure compression
             block_restart_interval: 16,
             format_version: FormatVersion::V5,
+            checksum_type: ChecksumType::CRC32c,
         };
 
         let mut writer = SstFileWriter::create(&opts);
@@ -408,6 +415,99 @@ mod tests {
         // Should fail to finish again
         let result = writer.finish();
         assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_rountrip_v5_xxh3() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
+        let path = dir.path().join("checksum_test_v5_xxh3.sst");
+
+        // Test with XXH3 checksum type
+        let opts = WriteOptions {
+            compression: CompressionType::None,
+            block_size: 4096,
+            block_restart_interval: 16,
+            format_version: FormatVersion::V5,
+            checksum_type: ChecksumType::XXH3,
+        };
+
+        // Write data
+        {
+            let mut writer = SstFileWriter::create(&opts);
+            writer.open(&path)?;
+            writer.put(b"key1", b"value1")?;
+            writer.put(b"key2", b"value2")?;
+            writer.finish()?;
+        }
+
+        // Read data back and verify the checksum type was used
+        let reader = SstReader::open(&path)?;
+        let footer = reader.get_footer();
+        assert_eq!(footer.checksum_type, ChecksumType::XXH3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_rountrip_v6_xxh3() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
+        let path = dir.path().join("checksum_test_v6_xxh3.sst");
+
+        // Test with XXH3 checksum type
+        let opts = WriteOptions {
+            compression: CompressionType::None,
+            block_size: 4096,
+            block_restart_interval: 16,
+            format_version: FormatVersion::V6,
+            checksum_type: ChecksumType::XXH3,
+        };
+
+        // Write data
+        {
+            let mut writer = SstFileWriter::create(&opts);
+            writer.open(&path)?;
+            writer.put(b"key1", b"value1")?;
+            writer.put(b"key2", b"value2")?;
+            writer.finish()?;
+        }
+
+        // Read data back and verify the checksum type was used
+        let reader = SstReader::open(&path)?;
+        let footer = reader.get_footer();
+        assert_eq!(footer.checksum_type, ChecksumType::XXH3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_rountrip_v7_xxh3() -> Result<()> {
+        let dir =
+            tempdir().map_err(|e| Error::InvalidArgument(format!("Temp dir failed: {}", e)))?;
+        let path = dir.path().join("checksum_test_v7_xxh3.sst");
+
+        // Test with XXH3 checksum type
+        let opts = WriteOptions {
+            compression: CompressionType::None,
+            block_size: 4096,
+            block_restart_interval: 16,
+            format_version: FormatVersion::V7,
+            checksum_type: ChecksumType::XXH3,
+        };
+
+        // Write data
+        {
+            let mut writer = SstFileWriter::create(&opts);
+            writer.open(&path)?;
+            writer.put(b"key1", b"value1")?;
+            writer.put(b"key2", b"value2")?;
+            writer.finish()?;
+        }
+
+        // Read data back and verify the checksum type was used
+        let reader = SstReader::open(&path)?;
+        let footer = reader.get_footer();
+        assert_eq!(footer.checksum_type, ChecksumType::XXH3);
         Ok(())
     }
 }

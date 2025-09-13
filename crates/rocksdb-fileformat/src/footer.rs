@@ -6,8 +6,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::types::{
-    ChecksumType, FOOTER_SIZE, LEGACY_MAGIC_NUMBER, ROCKSDB_MAGIC_NUMBER,
-    checksum_modifier_for_context,
+    ChecksumType, LEGACY_FOOTER_SIZE, LEGACY_MAGIC_NUMBER, ROCKSDB_FOOTER_SIZE,
+    ROCKSDB_MAGIC_NUMBER, checksum_modifier_for_context,
 };
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
@@ -104,7 +104,7 @@ impl Footer {
         let file_size = reader.seek(SeekFrom::End(0))?;
 
         // Minimum file size is 48 bytes (legacy footer)
-        if file_size < 48 {
+        if file_size < LEGACY_FOOTER_SIZE as u64 {
             return Err(Error::FileTooSmall);
         }
 
@@ -120,31 +120,29 @@ impl Footer {
             let mut version_bytes = [0u8; 4];
             reader.read_exact(&mut version_bytes)?;
 
-            let footer_size = 53;
-
             // Read the full footer
-            if file_size < footer_size as u64 {
+            if file_size < ROCKSDB_FOOTER_SIZE as u64 {
                 return Err(Error::FileTooSmall);
             }
-            reader.seek(SeekFrom::End(-(footer_size as i64)))?;
-            let mut footer_data = vec![0u8; footer_size];
+            reader.seek(SeekFrom::End(-(ROCKSDB_FOOTER_SIZE as i64)))?;
+            let mut footer_data = vec![0u8; ROCKSDB_FOOTER_SIZE];
             reader.read_exact(&mut footer_data)?;
 
-            let input_offset = file_size - (footer_size as u64);
+            let input_offset = file_size - (ROCKSDB_FOOTER_SIZE as u64);
             Self::decode_from_bytes(&footer_data, input_offset)
         } else {
             // Check for legacy magic number at position -48
-            reader.seek(SeekFrom::End(-48))?;
+            reader.seek(SeekFrom::End(-(LEGACY_FOOTER_SIZE as i64)))?;
             let mut legacy_magic_bytes = [0u8; 8];
             reader.read_exact(&mut legacy_magic_bytes)?;
             let legacy_magic = u64::from_le_bytes(legacy_magic_bytes);
 
             if legacy_magic == LEGACY_MAGIC_NUMBER {
                 // Legacy format (v0) - 48-byte footer
-                reader.seek(SeekFrom::End(-48))?;
-                let mut footer_data = vec![0u8; 48];
+                reader.seek(SeekFrom::End(-(LEGACY_FOOTER_SIZE as i64)))?;
+                let mut footer_data = vec![0u8; LEGACY_FOOTER_SIZE];
                 reader.read_exact(&mut footer_data)?;
-                let input_offset = file_size - 48;
+                let input_offset = file_size - (LEGACY_FOOTER_SIZE as u64);
                 Self::decode_from_bytes(&footer_data, input_offset)
             } else {
                 Err(Error::InvalidMagicNumber(magic))
@@ -166,7 +164,7 @@ impl Footer {
 
         // Handle legacy format (v0) first
         if magic == LEGACY_MAGIC_NUMBER {
-            if data.len() != 48 {
+            if data.len() != LEGACY_FOOTER_SIZE {
                 return Err(Error::InvalidFooterSize(data.len()));
             }
 
@@ -345,7 +343,7 @@ impl Footer {
             Ok(data)
         } else {
             // v1-v5 format (49 bytes)
-            let mut data = Vec::with_capacity(FOOTER_SIZE);
+            let mut data = Vec::with_capacity(ROCKSDB_FOOTER_SIZE);
 
             // Write checksum type first for v1+
             data.push(self.checksum_type as u8);
@@ -357,12 +355,12 @@ impl Footer {
             let used_bytes = data.len();
 
             // Format: checksum_type(1) + block_handles + padding + format_version(4) + magic(8)
-            let padding_size = FOOTER_SIZE - used_bytes - 12; // 4 bytes for format version + 8 for magic
+            let padding_size = ROCKSDB_FOOTER_SIZE - used_bytes - 12; // 4 bytes for format version + 8 for magic
             data.extend(vec![0u8; padding_size]);
             data.extend(&self.format_version.to_le_bytes());
             data.extend(&ROCKSDB_MAGIC_NUMBER.to_le_bytes());
 
-            assert_eq!(data.len(), FOOTER_SIZE);
+            assert_eq!(data.len(), ROCKSDB_FOOTER_SIZE);
             Ok(data)
         }
     }
@@ -384,7 +382,7 @@ mod tests {
 
         let mut encoded = footer.encode_to_bytes(1500)?; // Using footer offset from test
 
-        encoded[FOOTER_SIZE - 1] = 0xFF;
+        encoded[ROCKSDB_FOOTER_SIZE - 1] = 0xFF;
 
         let footer_offset = 1500; // Example footer offset
         let result = Footer::decode_from_bytes(&encoded, footer_offset);
@@ -414,7 +412,7 @@ mod tests {
 
         let footer_offset = 1000; // Example footer offset
         let encoded = original.encode_to_bytes(footer_offset)?;
-        assert_eq!(encoded.len(), FOOTER_SIZE);
+        assert_eq!(encoded.len(), ROCKSDB_FOOTER_SIZE);
         let decoded = Footer::decode_from_bytes(&encoded, footer_offset)?;
 
         // Compare all fields to ensure proper roundtrip encoding/decoding

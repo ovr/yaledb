@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub const ROCKSDB_MAGIC_NUMBER: u64 = 0x88e241b785f4cff7;
-pub const LEGACY_MAGIC_NUMBER: u64 = 0xdb4775248b80fb57;
+pub const ROCKSDB_FOOTER_SIZE: usize = 53;
 
-pub const FOOTER_SIZE: usize = 49;
+pub const LEGACY_MAGIC_NUMBER: u64 = 0xdb4775248b80fb57;
+pub const LEGACY_FOOTER_SIZE: usize = 48;
 
 pub const MAX_BLOCK_HANDLE_ENCODED_LENGTH: usize = 20;
 
@@ -152,6 +153,7 @@ pub struct WriteOptions {
     pub block_size: usize,
     pub block_restart_interval: usize,
     pub format_version: FormatVersion,
+    pub checksum_type: ChecksumType,
 }
 
 impl Default for WriteOptions {
@@ -161,6 +163,7 @@ impl Default for WriteOptions {
             block_size: DEFAULT_BLOCK_SIZE,
             block_restart_interval: DEFAULT_BLOCK_RESTART_INTERVAL,
             format_version: FormatVersion::V5,
+            checksum_type: ChecksumType::CRC32c,
         }
     }
 }

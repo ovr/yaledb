@@ -246,7 +246,8 @@ mod tests {
     #[test]
     fn test_data_block_basic_roundtrip() -> Result<()> {
         // Test with multiple entries - use smaller restart interval to avoid the prefix compression issue for now
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(4));
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(4));
 
         let test_data = vec![
             (b"key001".to_vec(), b"value001".to_vec()),
@@ -280,7 +281,8 @@ mod tests {
     #[test]
     fn test_data_block_roundtrip_with_reader() -> Result<()> {
         // Build a block
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
 
         let test_data = vec![
             (b"apple".to_vec(), b"fruit".to_vec()),
@@ -319,7 +321,8 @@ mod tests {
     #[test]
     fn test_data_block_roundtrip_with_restarts() -> Result<()> {
         // Use a small restart interval to force multiple restart points
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(2)); // Restart every 2 entries
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(2)); // Restart every 2 entries
 
         let test_data = vec![
             (b"a".to_vec(), b"1".to_vec()),

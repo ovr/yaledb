@@ -299,7 +299,8 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_simple() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
 
         builder.add(b"key1", b"value1");
         builder.add(b"key2", b"value2");
@@ -311,7 +312,8 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_with_compression() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
 
         // Add multiple entries to test compression
         for i in 0..10 {
@@ -348,14 +350,16 @@ mod tests {
 
     #[test]
     fn test_data_block_builder_empty() -> Result<()> {
-        let builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
+        let builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
         assert!(builder.empty());
         Ok(())
     }
 
     #[test]
     fn test_data_block_builder_reset() -> Result<()> {
-        let mut builder = DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
+        let mut builder =
+            DataBlockBuilder::new(DataBlockBuilderOptions::default().with_restart_interval(16));
         builder.add(b"key1", b"value1");
         assert!(!builder.empty());
 
