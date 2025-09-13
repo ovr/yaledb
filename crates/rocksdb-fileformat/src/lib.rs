@@ -15,11 +15,11 @@ pub mod types;
 
 pub use block_handle::BlockHandle;
 pub use compression::{compress, decompress};
-pub use data_block::{DataBlock, DataBlockReader, KeyValue};
+pub use data_block::{DataBlock, KeyValue};
 pub use error::{Error, Result};
 pub use footer::Footer;
 pub use index_block::{IndexBlock, IndexEntry};
-pub use iterator::{SstEntryIterator, SstIterator, SstTableIterator};
+// pub use iterator::{SstEntryIterator, SstIterator, SstTableIterator};
 pub use sst_file_writer::{EntryType, SstFileWriter};
 pub use sst_reader::SstReader;
 pub use types::{ChecksumType, CompressionType, FormatVersion, ReadOptions, WriteOptions};
