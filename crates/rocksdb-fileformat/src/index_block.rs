@@ -263,33 +263,21 @@ impl IndexBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::block_builder::IndexBlockBuilder;
     use crate::error::Result;
-    use crate::types::CompressionType;
+    use crate::types::{ChecksumType, CompressionType};
 
     #[test]
-    fn test_index_block_creation() -> Result<()> {
+    fn test_roundtrip_index_block_single_entry() -> Result<()> {
         let key1 = b"key001";
         let handle1 = BlockHandle {
             offset: 100,
             size: 200,
         };
 
-        let mut block_data = Vec::new();
-
-        block_data.extend_from_slice(&encode_varint(0));
-        block_data.extend_from_slice(&encode_varint(key1.len() as u32));
-
-        let handle_encoded = encode_block_handle(&handle1);
-        block_data.extend_from_slice(&encode_varint(handle_encoded.len() as u32));
-        block_data.extend_from_slice(key1);
-        block_data.extend_from_slice(&handle_encoded);
-
-        block_data.extend_from_slice(&0u32.to_le_bytes());
-        block_data.extend_from_slice(&1u32.to_le_bytes());
-
-        // Add 5-byte trailer: compression_type (0) + checksum (0)
-        block_data.push(0); // compression type = None
-        block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
+        let mut builder = IndexBlockBuilder::new(16);
+        builder.add_index_entry(key1, &handle1);
+        let block_data = builder.finish(CompressionType::None, ChecksumType::CRC32c, None, None)?;
 
         let index_block = IndexBlock::new(&block_data, CompressionType::None)?;
         let entries = index_block.get_entries()?;
@@ -302,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_block_for_key() -> Result<()> {
+    fn test_roundtrip_find_block_for_key() -> Result<()> {
         let key1 = b"key001";
         let key2 = b"key002";
         let handle1 = BlockHandle {
@@ -314,31 +302,10 @@ mod tests {
             size: 150,
         };
 
-        let mut block_data = Vec::new();
-
-        block_data.extend_from_slice(&encode_varint(0));
-        block_data.extend_from_slice(&encode_varint(key1.len() as u32));
-        let handle1_encoded = encode_block_handle(&handle1);
-        block_data.extend_from_slice(&encode_varint(handle1_encoded.len() as u32));
-        block_data.extend_from_slice(key1);
-        block_data.extend_from_slice(&handle1_encoded);
-
-        let restart_point = block_data.len() as u32;
-
-        block_data.extend_from_slice(&encode_varint(0));
-        block_data.extend_from_slice(&encode_varint(key2.len() as u32));
-        let handle2_encoded = encode_block_handle(&handle2);
-        block_data.extend_from_slice(&encode_varint(handle2_encoded.len() as u32));
-        block_data.extend_from_slice(key2);
-        block_data.extend_from_slice(&handle2_encoded);
-
-        block_data.extend_from_slice(&0u32.to_le_bytes());
-        block_data.extend_from_slice(&restart_point.to_le_bytes());
-        block_data.extend_from_slice(&2u32.to_le_bytes());
-
-        // Add 5-byte trailer: compression_type (0) + checksum (0)
-        block_data.push(0); // compression type = None
-        block_data.extend_from_slice(&0u32.to_le_bytes()); // checksum
+        let mut builder = IndexBlockBuilder::new(1); // Use restart_interval of 1 to create restart points
+        builder.add_index_entry(key1, &handle1);
+        builder.add_index_entry(key2, &handle2);
+        let block_data = builder.finish(CompressionType::None, ChecksumType::CRC32c, None, None)?;
 
         let index_block = IndexBlock::new(&block_data, CompressionType::None)?;
 
@@ -354,22 +321,5 @@ mod tests {
         assert!(result.is_some());
         assert_eq!(result.unwrap().offset, handle2.offset);
         Ok(())
-    }
-
-    fn encode_varint(mut value: u32) -> Vec<u8> {
-        let mut result = Vec::new();
-        while value >= 0x80 {
-            result.push((value & 0x7F) as u8 | 0x80);
-            value >>= 7;
-        }
-        result.push(value as u8);
-        result
-    }
-
-    fn encode_block_handle(handle: &BlockHandle) -> Vec<u8> {
-        let mut result = Vec::new();
-        result.extend_from_slice(&encode_varint(handle.offset as u32));
-        result.extend_from_slice(&encode_varint(handle.size as u32));
-        result
     }
 }
