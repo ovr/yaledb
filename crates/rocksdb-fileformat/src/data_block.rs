@@ -262,7 +262,12 @@ mod tests {
             builder.add(key, value);
         }
 
-        let block_bytes = builder.finish(CompressionType::None)?;
+        let block_bytes = builder.finish(
+            CompressionType::None,
+            crate::types::ChecksumType::CRC32c,
+            None,
+            None,
+        )?;
 
         // Read the block back
         let block = DataBlock::new(&block_bytes, CompressionType::None)?;
@@ -295,7 +300,12 @@ mod tests {
             builder.add(key, value);
         }
 
-        let block_bytes = builder.finish(CompressionType::None)?;
+        let block_bytes = builder.finish(
+            CompressionType::None,
+            crate::types::ChecksumType::CRC32c,
+            None,
+            None,
+        )?;
 
         // Use DataBlockReader to read back
         let mut reader = DataBlockReader::new(&block_bytes, CompressionType::None)?;
@@ -337,7 +347,12 @@ mod tests {
             builder.add(key, value);
         }
 
-        let block_bytes = builder.finish(CompressionType::None)?;
+        let block_bytes = builder.finish(
+            CompressionType::None,
+            crate::types::ChecksumType::CRC32c,
+            None,
+            None,
+        )?;
 
         // Read back and verify
         let block = DataBlock::new(&block_bytes, CompressionType::None)?;

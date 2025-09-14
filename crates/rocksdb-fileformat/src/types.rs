@@ -126,7 +126,7 @@ impl TryFrom<u8> for CompressionType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FormatVersion {
     V5 = 5,
     V6 = 6,

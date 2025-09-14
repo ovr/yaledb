@@ -1,7 +1,7 @@
 use crate::block_handle::BlockHandle;
 use crate::compression::compress;
 use crate::error::Result;
-use crate::types::CompressionType;
+use crate::types::{ChecksumType, CompressionType, checksum_modifier_for_context};
 use byteorder::{LittleEndian, WriteBytesExt};
 
 /// Configuration options for DataBlockBuilder
@@ -109,7 +109,13 @@ impl DataBlockBuilder {
         self.counter += 1;
     }
 
-    pub fn finish(&mut self, compression_type: CompressionType) -> Result<Vec<u8>> {
+    pub fn finish(
+        &mut self,
+        compression_type: CompressionType,
+        checksum_type: ChecksumType,
+        file_offset: Option<u64>,
+        base_context_checksum: Option<u32>,
+    ) -> Result<Vec<u8>> {
         if self.finished {
             panic!("DataBlockBuilder already finished");
         }
@@ -125,24 +131,44 @@ impl DataBlockBuilder {
             .write_u32::<LittleEndian>(self.restarts.len() as u32)
             .unwrap();
 
-        // First, create the raw block data with the 5-byte trailer
-        let mut raw_block = self.buffer.clone();
-        raw_block.push(compression_type as u8);
-        raw_block.write_u32::<LittleEndian>(0).unwrap(); // dummy checksum
+        // Calculate checksum over the block data + compression type
+        let mut checksum_data = self.buffer.clone();
+        checksum_data.push(compression_type as u8);
+        let mut checksum = checksum_type.calculate(&checksum_data);
 
-        // For uncompressed blocks, return as-is
-        // For compressed blocks, compress only the data without the trailer,
-        // then add the trailer after compression
+        // Apply context-based checksum modification if needed
+        if let (Some(offset), Some(base_checksum)) = (file_offset, base_context_checksum) {
+            let modifier = checksum_modifier_for_context(base_checksum, offset);
+            checksum = checksum.wrapping_add(modifier);
+        }
+
+        // For uncompressed blocks
         if compression_type == CompressionType::None {
-            Ok(raw_block)
+            let mut result = self.buffer.clone();
+            result.push(compression_type as u8);
+            result.write_u32::<LittleEndian>(checksum).unwrap();
+            Ok(result)
         } else {
             // Compress the data (without the trailer)
             let compressed_data = compress(&self.buffer, compression_type)?;
 
+            // Recalculate checksum over compressed data + compression type
+            let mut compressed_checksum_data = compressed_data.clone();
+            compressed_checksum_data.push(compression_type as u8);
+            let mut compressed_checksum = checksum_type.calculate(&compressed_checksum_data);
+
+            // Apply context-based checksum modification if needed
+            if let (Some(offset), Some(base_checksum)) = (file_offset, base_context_checksum) {
+                let modifier = checksum_modifier_for_context(base_checksum, offset);
+                compressed_checksum = compressed_checksum.wrapping_add(modifier);
+            }
+
             // Add the trailer after compression
             let mut result = compressed_data;
             result.push(compression_type as u8);
-            result.write_u32::<LittleEndian>(0).unwrap(); // dummy checksum
+            result
+                .write_u32::<LittleEndian>(compressed_checksum)
+                .unwrap();
 
             Ok(result)
         }
@@ -242,7 +268,13 @@ impl IndexBlockBuilder {
         self.counter += 1;
     }
 
-    pub fn finish(&mut self, compression_type: CompressionType) -> Result<Vec<u8>> {
+    pub fn finish(
+        &mut self,
+        compression_type: CompressionType,
+        checksum_type: ChecksumType,
+        file_offset: Option<u64>,
+        base_context_checksum: Option<u32>,
+    ) -> Result<Vec<u8>> {
         if self.finished {
             panic!("IndexBlockBuilder already finished");
         }
@@ -258,17 +290,47 @@ impl IndexBlockBuilder {
             .write_u32::<LittleEndian>(self.restarts.len() as u32)
             .unwrap();
 
-        // Add block trailer: compression type (1 byte) + checksum (4 bytes)
-        let mut block_data = self.buffer.clone();
-        block_data.push(compression_type as u8);
+        // Calculate checksum over the block data + compression type
+        let mut checksum_data = self.buffer.clone();
+        checksum_data.push(compression_type as u8);
+        let mut checksum = checksum_type.calculate(&checksum_data);
 
-        // Add dummy checksum (0 for now)
-        block_data.write_u32::<LittleEndian>(0).unwrap();
+        // Apply context-based checksum modification if needed
+        if let (Some(offset), Some(base_checksum)) = (file_offset, base_context_checksum) {
+            let modifier = checksum_modifier_for_context(base_checksum, offset);
+            checksum = checksum.wrapping_add(modifier);
+        }
 
-        // Compress if needed
-        let compressed_data = compress(&block_data, compression_type)?;
+        // For uncompressed blocks
+        if compression_type == CompressionType::None {
+            let mut result = self.buffer.clone();
+            result.push(compression_type as u8);
+            result.write_u32::<LittleEndian>(checksum).unwrap();
+            Ok(result)
+        } else {
+            // Compress the data (without the trailer)
+            let compressed_data = compress(&self.buffer, compression_type)?;
 
-        Ok(compressed_data)
+            // Recalculate checksum over compressed data + compression type
+            let mut compressed_checksum_data = compressed_data.clone();
+            compressed_checksum_data.push(compression_type as u8);
+            let mut compressed_checksum = checksum_type.calculate(&compressed_checksum_data);
+
+            // Apply context-based checksum modification if needed
+            if let (Some(offset), Some(base_checksum)) = (file_offset, base_context_checksum) {
+                let modifier = checksum_modifier_for_context(base_checksum, offset);
+                compressed_checksum = compressed_checksum.wrapping_add(modifier);
+            }
+
+            // Add the trailer after compression
+            let mut result = compressed_data;
+            result.push(compression_type as u8);
+            result
+                .write_u32::<LittleEndian>(compressed_checksum)
+                .unwrap();
+
+            Ok(result)
+        }
     }
 
     pub fn empty(&self) -> bool {
@@ -295,7 +357,7 @@ impl IndexBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::CompressionType;
+    use crate::types::{ChecksumType, CompressionType};
 
     #[test]
     fn test_data_block_builder_simple() -> Result<()> {
@@ -305,7 +367,7 @@ mod tests {
         builder.add(b"key1", b"value1");
         builder.add(b"key2", b"value2");
 
-        let block_data = builder.finish(CompressionType::None)?;
+        let block_data = builder.finish(CompressionType::None, ChecksumType::CRC32c, None, None)?;
         assert!(!block_data.is_empty());
         Ok(())
     }
@@ -322,7 +384,8 @@ mod tests {
             builder.add(key.as_bytes(), value.as_bytes());
         }
 
-        let compressed_block = builder.finish(CompressionType::Snappy)?;
+        let compressed_block =
+            builder.finish(CompressionType::Snappy, ChecksumType::CRC32c, None, None)?;
         assert!(!compressed_block.is_empty());
         Ok(())
     }
@@ -343,7 +406,7 @@ mod tests {
         builder.add_index_entry(b"key1", &handle1);
         builder.add_index_entry(b"key2", &handle2);
 
-        let block_data = builder.finish(CompressionType::None)?;
+        let block_data = builder.finish(CompressionType::None, ChecksumType::CRC32c, None, None)?;
         assert!(!block_data.is_empty());
         Ok(())
     }

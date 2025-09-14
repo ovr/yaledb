@@ -2,7 +2,7 @@ use crate::block_builder::{DataBlockBuilder, DataBlockBuilderOptions, IndexBlock
 use crate::block_handle::BlockHandle;
 use crate::error::{Error, Result};
 use crate::footer::Footer;
-use crate::types::{CompressionType, WriteOptions};
+use crate::types::{CompressionType, FormatVersion, WriteOptions};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -27,11 +27,19 @@ pub struct SstFileWriter {
     last_key: Vec<u8>,
     finished: bool,
     pending_index_entry: Option<(Vec<u8>, BlockHandle)>,
+    base_context_checksum: Option<u32>,
 }
 
 impl SstFileWriter {
     /// Create a new SstFileWriter with the given options
     pub fn create(opts: &WriteOptions) -> Self {
+        // Initialize base context checksum for format versions >= 6
+        let base_context_checksum = if opts.format_version >= FormatVersion::V6 {
+            Some(0) // TODO: Generate proper base context checksum
+        } else {
+            None
+        };
+
         SstFileWriter {
             options: opts.clone(),
             writer: None,
@@ -45,6 +53,7 @@ impl SstFileWriter {
             last_key: Vec::new(),
             finished: false,
             pending_index_entry: None,
+            base_context_checksum,
         }
     }
 
@@ -103,14 +112,19 @@ impl SstFileWriter {
         }
 
         // Prepare all data to write
-        let index_block_data = self.index_block_builder.finish(CompressionType::None)?;
+        let index_block_data = self.index_block_builder.finish(
+            CompressionType::None,
+            self.options.checksum_type,
+            Some(self.offset),
+            self.base_context_checksum,
+        )?;
         let index_handle = BlockHandle {
             offset: self.offset,
             size: index_block_data.len() as u64,
         };
 
-        let metaindex_data = self.create_empty_metaindex_block()?;
         let metaindex_offset = self.offset + index_block_data.len() as u64;
+        let metaindex_data = self.create_empty_metaindex_block(metaindex_offset)?;
         let metaindex_handle = BlockHandle {
             offset: metaindex_offset,
             size: metaindex_data.len() as u64,
@@ -121,7 +135,7 @@ impl SstFileWriter {
             metaindex_handle,
             index_handle,
             format_version: self.options.format_version as u32,
-            base_context_checksum: None,
+            base_context_checksum: self.base_context_checksum,
         };
         // Calculate where the footer will be written (after index and metaindex blocks)
         let footer_offset =
@@ -193,7 +207,12 @@ impl SstFileWriter {
         let writer = self.writer.as_mut().unwrap();
 
         // Finish the current data block
-        let block_data = self.data_block_builder.finish(self.options.compression)?;
+        let block_data = self.data_block_builder.finish(
+            self.options.compression,
+            self.options.checksum_type,
+            Some(self.offset),
+            self.base_context_checksum,
+        )?;
 
         // Create block handle
         let block_handle = BlockHandle {
@@ -229,7 +248,7 @@ impl SstFileWriter {
         encoded
     }
 
-    fn create_empty_metaindex_block(&self) -> Result<Vec<u8>> {
+    fn create_empty_metaindex_block(&self, file_offset: u64) -> Result<Vec<u8>> {
         // Create an empty metaindex block
         let mut block_data = Vec::new();
 
@@ -237,9 +256,20 @@ impl SstFileWriter {
         block_data.write_u32::<LittleEndian>(0)?; // restart point at 0
         block_data.write_u32::<LittleEndian>(1)?; // one restart point
 
+        // Calculate checksum over block data + compression type
+        let mut checksum_data = block_data.clone();
+        checksum_data.push(CompressionType::None as u8);
+        let mut checksum = self.options.checksum_type.calculate(&checksum_data);
+
+        // Apply context-based checksum modification if needed
+        if let Some(base_checksum) = self.base_context_checksum {
+            let modifier = crate::types::checksum_modifier_for_context(base_checksum, file_offset);
+            checksum = checksum.wrapping_add(modifier);
+        }
+
         // Add block trailer: compression type (1 byte) + checksum (4 bytes)
         block_data.push(CompressionType::None as u8);
-        block_data.write_u32::<LittleEndian>(0)?; // dummy checksum
+        block_data.write_u32::<LittleEndian>(checksum)?;
 
         Ok(block_data)
     }
